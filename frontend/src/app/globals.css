@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+/*
+ * Tailwind v4 configures itself here rather than in a tailwind.config.js file.
+ * Anything defined in @theme becomes a utility class automatically — so
+ * --color-ink below gives you `text-ink`, `bg-ink`, `border-ink`, and so on.
+ */
+@theme {
+  --color-paper:     #ffffff;
+  --color-surface:   #f7f8fa;
+  --color-ink:       #16181d;
+  --color-muted:     #5c6470;
+  --color-faint:     #99a1ad;
+  --color-line:      #e4e7ec;
+  --color-brand:     #16515f;
+  --color-brand-dim: #e6f0f2;
+  --color-cash:      #1f6b45;
+  --color-cash-dim:  #e8f3ec;
+  --color-alert:     #a33a2a;
+  --color-alert-dim: #fbecea;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prices and quantities line up in columns, so give digits equal width. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
