@@ -4,16 +4,16 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/components/CartProvider';
-import { checkStock } from '@/lib/api';
+import { checkAvailability } from '@/lib/api';
 import { money } from '@/lib/format';
 
 /**
  * The cart.
  *
  * The important detail: the totals shown here come from the SERVER, via
- * /api/orders/check-stock, not from adding up the prices stored in the cart.
- * That endpoint returns the real subtotal, the applicable delivery fee, and
- * flags anything that has gone out of stock while the customer was browsing.
+ * /api/orders/check-availability, not from adding up the prices stored in the
+ * cart. That endpoint returns the real subtotal, the applicable delivery fee,
+ * and flags anything that was marked sold out while the customer was browsing.
  *
  * Doing the arithmetic in the browser would eventually show a total that
  * disagrees with what the courier asks for — which is exactly the kind of
@@ -32,7 +32,7 @@ export default function CartPage() {
     let cancelled = false;
     setChecking(true);
 
-    checkStock(items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })))
+    checkAvailability(items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })))
       .then((result) => { if (!cancelled) setTotals(result); })
       .catch(() => { if (!cancelled) setTotals(null); })
       .finally(() => { if (!cancelled) setChecking(false); });
@@ -49,8 +49,8 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold mb-2">Your cart is empty</h1>
-        <p className="text-muted mb-6">Have a look at what is in stock.</p>
+        <h1 className="display mb-2 text-3xl">Your cart is empty</h1>
+        <p className="text-muted mb-6">Have a look at what we are selling.</p>
         <Link
           href="/products"
           className="inline-block bg-ink text-white rounded-lg px-5 py-2.5 text-sm font-medium hover:bg-brand transition-colors"
@@ -65,7 +65,7 @@ export default function CartPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold tracking-tight mb-6">Your cart</h1>
+      <h1 className="display mb-6 text-3xl">Your cart</h1>
 
       {unavailable.length > 0 && (
         <div className="border border-alert bg-alert-dim rounded-lg px-4 py-3 mb-6 text-sm">
@@ -74,9 +74,7 @@ export default function CartPage() {
             {unavailable.map((item) => (
               <li key={item.product_id}>
                 {item.product_name || 'An item'} —{' '}
-                {item.reason === 'insufficient_stock'
-                  ? `only ${item.in_stock} left, you asked for ${item.requested}`
-                  : 'no longer available'}
+                {item.reason === 'sold_out' ? 'sold out' : 'no longer available'}
               </li>
             ))}
           </ul>

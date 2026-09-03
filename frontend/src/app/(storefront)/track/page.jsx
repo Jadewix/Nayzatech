@@ -34,7 +34,7 @@ export default function TrackPage() {
 
   return (
     <div className="max-w-md mx-auto px-4 py-16">
-      <h1 className="text-2xl font-bold tracking-tight mb-2">Track your order</h1>
+      <h1 className="display mb-2 text-3xl">Track your order</h1>
       <p className="text-muted text-sm mb-6">
         Enter your order number and the email you used at checkout.
       </p>

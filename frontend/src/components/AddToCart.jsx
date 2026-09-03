@@ -18,8 +18,10 @@ export default function AddToCart({ product }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
-  const outOfStock = product.stock_quantity === 0 || !product.is_active;
-  const max = Math.min(product.stock_quantity, 10);
+  // This store does not count units, so there is no per-product ceiling —
+  // just a sane cap on how many one customer can add in a single go.
+  const soldOut = product.in_stock === false || !product.is_active;
+  const max = 10;
 
   function handleAdd() {
     addItem(product, quantity);
@@ -27,10 +29,10 @@ export default function AddToCart({ product }) {
     setTimeout(() => setAdded(false), 2200);
   }
 
-  if (outOfStock) {
+  if (soldOut) {
     return (
       <div className="border border-line rounded-lg px-4 py-3 text-sm text-muted bg-surface">
-        Out of stock. Check back soon.
+        Sold out. Check back soon.
       </div>
     );
   }
@@ -43,31 +45,27 @@ export default function AddToCart({ product }) {
           id="qty"
           value={quantity}
           onChange={(e) => setQuantity(Number(e.target.value))}
-          className="border border-line rounded-lg px-3 py-2 text-sm bg-paper tabular"
+          className="min-h-11 border border-line rounded-lg px-3 py-2 text-[0.95rem] bg-paper tabular"
         >
           {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
-        {product.stock_quantity <= 5 && (
-          <span className="text-sm text-alert tabular">
-            Only {product.stock_quantity} left
-          </span>
-        )}
       </div>
 
+      {/* ≥44pt touch targets (HIG: Accessibility > control sizes). */}
       <div className="flex gap-3">
         <button
           type="button"
           onClick={handleAdd}
-          className="flex-1 bg-ink text-white rounded-lg px-5 py-3 text-sm font-medium hover:bg-brand transition-colors"
+          className="flex-1 min-h-12 bg-ink text-white rounded-lg px-5 py-3 text-[0.95rem] font-medium hover:bg-brand transition-colors"
         >
           {added ? 'Added to cart' : 'Add to cart'}
         </button>
         <button
           type="button"
           onClick={() => { addItem(product, quantity); router.push('/cart'); }}
-          className="border border-line rounded-lg px-5 py-3 text-sm font-medium hover:border-brand transition-colors"
+          className="min-h-12 border border-line rounded-lg px-5 py-3 text-[0.95rem] font-medium hover:border-brand transition-colors"
         >
           Buy now
         </button>

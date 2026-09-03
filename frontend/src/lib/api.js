@@ -36,16 +36,18 @@ export class ApiError extends Error {
  * @param {string} path      e.g. '/api/products?limit=8'
  * @param {object} [options] standard fetch options, plus:
  * @param {number|false} [options.revalidate]  seconds to cache on the server.
- *        false disables caching (use for anything that must be live, like stock).
+ *        false disables caching (use for anything that must be live, like
+ *        availability or an order).
  */
 async function request(path, { revalidate, ...options } = {}) {
   const url = `${API_URL}${path}`;
 
   /**
    * Next.js caches server-side fetches by default, which would happily serve a
-   * product page showing stock from an hour ago. Being explicit avoids that:
+   * product page claiming an item is available an hour after it sold out.
+   * Being explicit avoids that:
    *   revalidate: 60     re-fetch at most once a minute (catalogue pages)
-   *   revalidate: false  never cache (stock checks, checkout)
+   *   revalidate: false  never cache (availability, cart, checkout, orders)
    */
   const nextOptions =
     revalidate === false
@@ -118,9 +120,12 @@ export function getProduct(idOrSlug) {
   return request(`/api/products/${encodeURIComponent(idOrSlug)}`);
 }
 
-/** Live stock — never cached, or you show "in stock" for something that sold out. */
-export function getProductStock(id) {
-  return request(`/api/products/${id}/stock`, { revalidate: false });
+/**
+ * Live availability — never cached, or the page says "add to cart" for
+ * something that was marked sold out five minutes ago.
+ */
+export function getProductAvailability(id) {
+  return request(`/api/products/${id}/availability`, { revalidate: false });
 }
 
 export function getCategories(params = {}) {
@@ -144,12 +149,15 @@ export function getStoreInfo(subtotal) {
  * ------------------------------------------------------------------------ */
 
 /**
- * Pre-checkout availability check. Advisory only — the backend re-checks stock
- * under a database lock when the order is actually placed, so treat a pass here
- * as "probably fine", never as a reservation.
+ * Pre-checkout availability check. It also returns the money breakdown priced
+ * by the server, which is what the cart displays — the browser never adds the
+ * total up itself.
+ *
+ * Advisory only: the backend checks again when the order is actually placed,
+ * so treat a pass here as "probably fine", never as a reservation.
  */
-export function checkStock(items) {
-  return request('/api/orders/check-stock', {
+export function checkAvailability(items) {
+  return request('/api/orders/check-availability', {
     method: 'POST',
     body: JSON.stringify({ items }),
     revalidate: false,

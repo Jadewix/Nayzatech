@@ -73,7 +73,6 @@ export function CartProvider({ children }) {
           slug: product.slug,
           price: product.effective_price ?? product.sale_price ?? product.base_price,
           image_url: product.image_url,
-          stock_quantity: product.stock_quantity,
         },
       ];
     });
@@ -97,7 +96,8 @@ export function CartProvider({ children }) {
 
   const value = useMemo(() => {
     const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-    // Indicative only. The real subtotal comes back from /api/orders/check-stock.
+    // Indicative only. The real subtotal comes back from the server via
+    // /api/orders/check-availability.
     const estimatedSubtotal = items.reduce(
       (sum, i) => sum + Number(i.price || 0) * i.quantity,
       0

@@ -24,6 +24,13 @@ Thumbs.db
 .idea/
 *.swp
 
+# Cloudflare — build output and local wrangler state. Never commit these:
+# .dev.vars in particular holds the same secrets as .env.
+.wrangler/
+.open-next/
+.dev.vars
+.dev.vars.*
+
 # Misc
 coverage/
 tmp/

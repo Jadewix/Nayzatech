@@ -5,6 +5,7 @@ import { getProduct } from '@/lib/api';
 import { money, specLabel, specValue } from '@/lib/format';
 import AddToCart from '@/components/AddToCart';
 import ProductGrid from '@/components/ProductGrid';
+import SpecPlate from '@/components/SpecPlate';
 
 /**
  * generateMetadata runs on the server before the page renders, so the real
@@ -88,9 +89,10 @@ export default async function ProductPage({ params }) {
                 priority
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-faint text-sm">
-                No image
-              </div>
+              /* No photograph yet, so the slot shows the real specification
+                 instead. Six rows here rather than the card's three — there is
+                 room, and this is the page where someone is comparing. */
+              <SpecPlate product={product} size="hero" />
             )}
           </div>
           {product.gallery_urls?.length > 0 && (
@@ -106,12 +108,8 @@ export default async function ProductPage({ params }) {
 
         {/* Details */}
         <div>
-          {product.brand && (
-            <p className="text-xs text-faint uppercase tracking-wide mb-1.5">{product.brand}</p>
-          )}
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3 text-balance">
-            {product.name}
-          </h1>
+          {product.brand && <p className="eyebrow mb-2 text-faint">{product.brand}</p>}
+          <h1 className="display mb-3 text-balance text-3xl sm:text-4xl">{product.name}</h1>
 
           <div className="flex items-baseline gap-3 mb-1">
             <span className="text-2xl font-bold tabular">{money(price)}</span>
@@ -145,7 +143,8 @@ export default async function ProductPage({ params }) {
       {/* Description */}
       {product.description && (
         <section className="mb-14 max-w-2xl">
-          <h2 className="text-lg font-semibold mb-3">About this product</h2>
+          <p className="eyebrow text-faint">In detail</p>
+          <h2 className="display mt-2 mb-4 text-2xl">About this product</h2>
           <p className="text-muted leading-relaxed whitespace-pre-line">{product.description}</p>
         </section>
       )}
@@ -153,7 +152,8 @@ export default async function ProductPage({ params }) {
       {/* Specs — the JSONB column rendered with the admin's labels and units */}
       {orderedSpecs.length > 0 && (
         <section className="mb-14 max-w-2xl">
-          <h2 className="text-lg font-semibold mb-3">Specifications</h2>
+          <p className="eyebrow text-faint">The numbers</p>
+          <h2 className="display mt-2 mb-4 text-2xl">Specifications</h2>
           <div className="border border-line rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <tbody>
@@ -161,10 +161,13 @@ export default async function ProductPage({ params }) {
                   const field = (product.spec_fields || []).find((f) => f.spec_key === key);
                   return (
                     <tr key={key} className={index % 2 ? 'bg-surface' : ''}>
-                      <th scope="row" className="text-left font-medium px-4 py-2.5 w-2/5 align-top">
+                      <th
+                        scope="row"
+                        className="w-2/5 px-4 py-2.5 text-left align-top font-mono text-xs uppercase tracking-[0.1em] text-muted"
+                      >
                         {field?.label || specLabel(key)}
                       </th>
-                      <td className="px-4 py-2.5 text-muted">
+                      <td className="px-4 py-2.5 font-medium">
                         {specValue(value)}{field?.unit ? ` ${field.unit}` : ''}
                       </td>
                     </tr>
@@ -178,7 +181,8 @@ export default async function ProductPage({ params }) {
 
       {product.related_products?.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold mb-4">You might also like</h2>
+          <p className="eyebrow text-faint">Related</p>
+          <h2 className="display mt-2 mb-5 text-2xl">You might also like</h2>
           <ProductGrid products={product.related_products} />
         </section>
       )}

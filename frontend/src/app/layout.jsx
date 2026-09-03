@@ -1,16 +1,17 @@
 import './globals.css';
-import { CartProvider } from '@/components/CartProvider';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
 
 const STORE_NAME = process.env.NEXT_PUBLIC_STORE_NAME || 'Tech Store';
 
 /**
- * Metadata here becomes the <head> of every page.
+ * The document shell, and nothing else.
  *
- * The `template` in title means a page setting its title to "Laptops" renders
- * as "Laptops — Tech Store" in the browser tab and in Google results, without
- * every page having to repeat the store name.
+ * The storefront chrome (header, footer, cart) lives in (storefront)/layout.jsx
+ * rather than here, because /admin must NOT render it — an operator editing
+ * stock has no use for a shopping cart, and the admin panel having its own
+ * chrome is what makes the two feel like separate applications.
+ *
+ * (storefront) is a route group: the parentheses mean it groups files without
+ * appearing in the URL, so app/(storefront)/cart/page.jsx is still /cart.
  */
 export const metadata = {
   title: {
@@ -29,17 +30,10 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
         />
       </head>
-      <body className="min-h-screen flex flex-col">
-        {/* CartProvider wraps everything so any page can read the cart. */}
-        <CartProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </CartProvider>
-      </body>
+      <body className="min-h-screen flex flex-col">{children}</body>
     </html>
   );
 }

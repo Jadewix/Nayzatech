@@ -56,7 +56,7 @@ export default async function ProductsPage({ searchParams }) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold tracking-tight mb-1">
+      <h1 className="display mb-1 text-3xl">
         {params.search ? `Results for “${params.search}”` : 'All products'}
       </h1>
       <p className="text-sm text-muted mb-6 tabular">
@@ -143,7 +143,7 @@ export default async function ProductsPage({ searchParams }) {
               href={buildUrl({ in_stock: params.in_stock ? undefined : 'true', page: undefined })}
               className={`text-sm ${params.in_stock ? 'text-brand font-medium' : 'text-muted hover:text-ink'}`}
             >
-              {params.in_stock ? '✓ In stock only' : 'In stock only'}
+              {params.in_stock ? '✓ Available only' : 'Available only'}
             </Link>
           </div>
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/components/CartProvider';
-import { checkStock, createOrder } from '@/lib/api';
+import { checkAvailability, createOrder } from '@/lib/api';
 import { money } from '@/lib/format';
 
 /**
@@ -48,7 +48,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!hydrated || items.length === 0) return;
     let cancelled = false;
-    checkStock(toOrderItems())
+    checkAvailability(toOrderItems())
       .then((result) => { if (!cancelled) setTotals(result); })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -127,7 +127,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold tracking-tight mb-6">Checkout</h1>
+      <h1 className="display mb-6 text-3xl">Checkout</h1>
 
       {error && (
         <div
@@ -244,7 +244,7 @@ export default function CheckoutPage() {
             <p className="text-xs uppercase tracking-wide text-cash font-medium">
               Pay in cash on delivery
             </p>
-            <p className="text-2xl font-bold text-cash tabular mt-1">
+            <p className="display tabular mt-1 text-2xl text-cash">
               {totals ? money(totals.total) : '—'}
             </p>
             <p className="text-xs text-ink/70 mt-1">Have this ready for the courier</p>

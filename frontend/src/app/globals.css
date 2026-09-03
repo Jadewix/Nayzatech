@@ -6,19 +6,65 @@
  * --color-ink below gives you `text-ink`, `bg-ink`, `border-ink`, and so on.
  */
 @theme {
+  /* --- Storefront ------------------------------------------------------
+   *
+   * Azure on white, with a near-black used at full bleed. The blue is the
+   * only saturated colour on a normal page: it marks links, buttons and the
+   * hero, and nothing else competes with it. `sale` is the one exception —
+   * a warm orange reserved exclusively for discount badges, so a price cut is
+   * the single thing on the page that is not blue, black or grey.
+   */
   --color-paper:     #ffffff;
-  --color-surface:   #f7f8fa;
-  --color-ink:       #16181d;
-  --color-muted:     #5c6470;
-  --color-faint:     #99a1ad;
-  --color-line:      #e4e7ec;
-  --color-brand:     #16515f;
-  --color-brand-dim: #e6f0f2;
-  --color-cash:      #1f6b45;
-  --color-cash-dim:  #e8f3ec;
-  --color-alert:     #a33a2a;
+  --color-surface:   #f2f5f9;
+  --color-ink:       #0b0f16;
+  --color-muted:     #59636f;
+  --color-faint:     #94a0ae;
+  --color-line:      #e3e8ef;
+  --color-brand:     #1a6ae0;
+  --color-brand-dim: #e9f1fe;
+  --color-sale:      #dd5f0d;
+  --color-sale-dim:  #fdf0e6;
+
+  /*
+   * The component tray.
+   *
+   * Product photography is uploaded by the shop owner, so a brand-new
+   * catalogue has none. Rather than a grey box apologising for itself, an
+   * image-less product renders its real technical specification on this dark
+   * ground — the colour of an anti-static tray or the underside of a laptop.
+   * See components/SpecPlate.jsx.
+   */
+  --color-tray:      #131a24;
+  --color-tray-2:    #1d2735;
+  --color-tray-ink:  #7f8fa4;
+
+  /* Cash on delivery. Used for anything about paying the courier, nowhere else. */
+  --color-cash:      #157347;
+  --color-cash-dim:  #e7f3ec;
+  --color-alert:     #a5321f;
   --color-alert-dim: #fbecea;
 
+  /* --- Admin -----------------------------------------------------------
+   *
+   * The panel keeps its own instrument-panel palette so the two apps never
+   * feel like the same screen: a cool near-black, a flat grey ground, and an
+   * electric blue that runs slightly hotter than the storefront's azure.
+   */
+  --color-console:     #0f1729;
+  --color-console-2:   #1b2439;
+  --color-admin-bg:    #eef1f5;
+  --color-accent:      #1f6feb;
+  --color-accent-dim:  #e8f1fe;
+
+  /*
+   * Three faces, three jobs.
+   *   display — Archivo, heavy and tightly set. Headlines and section heads.
+   *   sans    — IBM Plex Sans. Everything you read in sentences.
+   *   mono    — IBM Plex Mono. Anything a machine produced: SKUs, spec keys,
+   *             order numbers, the eyebrow labels above sections.
+   * The mono is not decoration — it marks data as data.
+   */
+  --font-display: Archivo, "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
@@ -32,8 +78,64 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * Display type is set tight and heavy. Archivo at 800 with negative tracking is
+ * what carries the brand — it appears at exactly three sizes and nowhere else.
+ */
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.03;
+}
+
+/* The small monospace label above a section. Marks structure, not decoration. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
 /* Prices and quantities line up in columns, so give digits equal width. */
 .tabular { font-variant-numeric: tabular-nums; }
+
+/*
+ * A horizontal rail that scrolls on a phone and becomes an ordinary grid above
+ * it. The scrollbar is hidden because the half-visible next tile is the
+ * affordance.
+ *
+ * Confined to the phone breakpoint on purpose. A bare `.rail { display: flex }`
+ * is a plain class selector, exactly as specific as Tailwind's `sm:grid`, and
+ * it is written later in the stylesheet — so it would silently win at every
+ * width and the grid would never appear. Scoping it below 640px means the two
+ * rules can never both apply.
+ */
+@media (max-width: 639px) {
+  .rail {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    padding-bottom: 0.25rem;
+  }
+  .rail::-webkit-scrollbar { display: none; }
+  .rail > * { scroll-snap-align: start; flex: 0 0 auto; }
+}
+
+/*
+ * Safe-area insets (HIG: Layout > Safe areas).
+ *
+ * On phones with a notch or home indicator, the OS reserves strips at the top
+ * and bottom of the screen. `env(safe-area-inset-*)` is 0 on hardware without
+ * them, so these are free to apply everywhere. Used by the fixed mobile tab bar
+ * so its buttons sit above the home indicator, not under it.
+ */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+.h-safe-bottom { height: env(safe-area-inset-bottom); }
 
 :focus-visible {
   outline: 2px solid var(--color-brand);

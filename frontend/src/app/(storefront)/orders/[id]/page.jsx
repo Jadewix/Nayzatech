@@ -46,7 +46,7 @@ export default async function OrderPage({ params, searchParams }) {
       )}
 
       <div className="flex flex-wrap items-baseline justify-between gap-2 mb-1">
-        <h1 className="text-2xl font-bold tracking-tight font-mono">{order.order_number}</h1>
+        <h1 className="font-mono text-2xl font-semibold tracking-tight">{order.order_number}</h1>
         <span className="text-sm text-muted">{formatDate(order.created_at)}</span>
       </div>
       <p className="text-muted mb-6">
@@ -59,7 +59,7 @@ export default async function OrderPage({ params, searchParams }) {
           <p className="text-xs uppercase tracking-wide text-cash font-medium">
             Have this ready in cash
           </p>
-          <p className="text-3xl font-bold text-cash tabular mt-1">{money(order.total_amount)}</p>
+          <p className="display tabular mt-1 text-3xl text-cash">{money(order.total_amount)}</p>
           <p className="text-sm text-ink/75 mt-1">Payable to the courier on delivery</p>
         </div>
       )}

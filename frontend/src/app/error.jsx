@@ -13,7 +13,7 @@ export default function Error({ error, reset }) {
 
   return (
     <div className="max-w-md mx-auto px-4 py-24 text-center">
-      <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
+      <h1 className="display mb-2 text-3xl">Something went wrong</h1>
       <p className="text-muted mb-6">
         {cannotReachApi
           ? 'The store server is not responding. If you are developing, check that the backend is running on port 5000.'
