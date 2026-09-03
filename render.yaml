@@ -1,0 +1,85 @@
+# =============================================================================
+#  Render blueprint — the Express API only.
+#
+#  The storefront is NOT here. It deploys to Cloudflare Workers from
+#  frontend/wrangler.jsonc. This file exists because the API cannot run on
+#  Workers: multer needs Node streams, and express-rate-limit keeps its
+#  counters in memory, which is meaningless across Worker isolates.
+#
+#  HOW TO USE
+#    Render dashboard -> New -> Blueprint -> pick this repository.
+#    Render reads this file, creates the service, and then prompts for every
+#    variable marked `sync: false` below.
+#
+#  WHY THE SECRETS ARE NOT IN THIS FILE
+#    `sync: false` means "ask me in the dashboard, never store the value in
+#    git". SUPABASE_SERVICE_ROLE_KEY bypasses row-level security and can read
+#    or delete every row in the database; ADMIN_API_KEY opens every /api/admin
+#    route. Neither ever belongs in a committed file.
+# =============================================================================
+
+services:
+  - type: web
+    name: nayzatech-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    # `npm ci` not `npm install`: it installs exactly what package-lock.json
+    # pins, so a deploy months from now builds the same tree as today.
+    buildCommand: npm ci
+    startCommand: npm start
+
+    # Render polls this to decide the service is up. It sits before the rate
+    # limiter in app.js on purpose, so health checks are never throttled.
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # Render injects the real port. config/env.js already reads PORT, and
+      # app.listen binds every interface, so nothing in the code changes.
+      - key: PORT
+        value: 5000
+
+      # --- Secrets: set these in the Render dashboard --------------------
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ADMIN_API_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+
+      # --- CORS -----------------------------------------------------------
+      # The single most likely thing to break the live site. This must list
+      # the storefront's real origin, or every browser request is blocked and
+      # the shop renders with no products and a CORS error in the console.
+      # Comma-separated, no trailing slashes:
+      #   https://nayzatech.workers.dev,https://shop.yourdomain.com
+      - key: FRONTEND_URL
+        sync: false
+
+      # --- Email ----------------------------------------------------------
+      # Leave EMAIL_ENABLED false until the Brevo sender is verified. An
+      # unverified sender is rejected outright and is the usual reason
+      # confirmation emails silently never arrive.
+      - key: EMAIL_ENABLED
+        value: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        value: Nayzatech
+      - key: ADMIN_EMAIL
+        sync: false
+
+      # --- Store details --------------------------------------------------
+      - key: STORE_NAME
+        value: Nayzatech
+      - key: SUPABASE_STORAGE_BUCKET
+        value: product-images
+      - key: STORE_URL
+        sync: false
+      - key: STORE_SUPPORT_EMAIL
+        sync: false

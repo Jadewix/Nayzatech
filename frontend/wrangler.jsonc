@@ -1,0 +1,62 @@
+/**
+ * Cloudflare Workers configuration for the storefront.
+ *
+ * The Next.js app is compiled into a Worker by @opennextjs/cloudflare, which
+ * writes .open-next/worker.js (the server) and .open-next/assets (everything
+ * static). Both paths below point at that build output, so neither is
+ * something you edit or commit — .open-next/ is gitignored.
+ *
+ * WHAT NEVER GOES IN THIS FILE
+ * Secrets. This file is committed to a public-facing repository. `vars` below
+ * holds only NEXT_PUBLIC_* values, which are embedded in the JavaScript every
+ * visitor downloads and are therefore public by definition. The admin key and
+ * the Supabase service_role key belong to the backend and must never appear
+ * here, in the dashboard's plain-text variables, or in .dev.vars.
+ */
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nayzatech",
+  "main": ".open-next/worker.js",
+
+  /**
+   * Pins the Workers runtime behaviour to this date, so a future platform
+   * change cannot alter how the deployed app behaves. Raise it deliberately,
+   * never automatically.
+   */
+  "compatibility_date": "2026-09-03",
+
+  /**
+   * Required by OpenNext. Next.js server code reaches for Node built-ins —
+   * node:crypto, node:path, Buffer — and without this flag the Worker has no
+   * implementation for them and fails at runtime rather than at build time.
+   */
+  "compatibility_flags": ["nodejs_compat"],
+
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+
+  /**
+   * Keeps request logs and errors in the dashboard. Worth having on: a
+   * server-rendered page that throws in production is otherwise invisible.
+   */
+  "observability": {
+    "enabled": true
+  },
+
+  /**
+   * Public build-time configuration.
+   *
+   * NEXT_PUBLIC_API_URL must point at wherever the Express API is hosted. It
+   * is baked into the client bundle at build time, so changing it here means
+   * rebuilding, not just redeploying. Left as the placeholder below until the
+   * API has a real address — pointing it at localhost in production means
+   * every visitor's browser tries to reach an API on their own machine, and
+   * the shop renders with no products.
+   */
+  "vars": {
+    "NEXT_PUBLIC_API_URL": "http://localhost:5000",
+    "NEXT_PUBLIC_STORE_NAME": "Nayzatech"
+  }
+}
