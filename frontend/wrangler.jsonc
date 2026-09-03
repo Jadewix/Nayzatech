@@ -48,15 +48,21 @@
   /**
    * Public build-time configuration.
    *
-   * NEXT_PUBLIC_API_URL must point at wherever the Express API is hosted. It
-   * is baked into the client bundle at build time, so changing it here means
-   * rebuilding, not just redeploying. Left as the placeholder below until the
-   * API has a real address — pointing it at localhost in production means
-   * every visitor's browser tries to reach an API on their own machine, and
-   * the shop renders with no products.
+   * NEXT_PUBLIC_API_URL points at the Express API on Render.
+   *
+   * SETTING IT HERE IS NOT ENOUGH ON ITS OWN. These are RUNTIME bindings, and
+   * they cover the server side — the pages rendered on Workers and the
+   * /api/proxy and /api/admin-session route handlers.
+   *
+   * But lib/api.js is also imported by client components (the cart and
+   * checkout pages), and Next.js inlines NEXT_PUBLIC_* into the browser bundle
+   * at BUILD time. A runtime binding arrives too late for that. So the same
+   * two values must ALSO be set as build variables in the Cloudflare dashboard
+   * under "Build variables and secrets", or the client half of the app ships
+   * with whatever was baked in and the cart silently talks to the wrong host.
    */
   "vars": {
-    "NEXT_PUBLIC_API_URL": "http://localhost:5000",
+    "NEXT_PUBLIC_API_URL": "https://nayzatech-api.onrender.com",
     "NEXT_PUBLIC_STORE_NAME": "Nayzatech"
   }
 }
