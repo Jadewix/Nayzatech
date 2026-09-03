@@ -7,15 +7,26 @@
 #  counters in memory, which is meaningless across Worker isolates.
 #
 #  HOW TO USE
-#    Render dashboard -> New -> Blueprint -> pick this repository.
-#    Render reads this file, creates the service, and then prompts for every
-#    variable marked `sync: false` below.
+#    Render dashboard -> Blueprints -> New Blueprint Instance -> this repo.
+#    Render reads this file and prompts for the four `sync: false` values.
+#
+#  WHY ONLY FOUR PROMPTS
+#    Everything the server treats as optional is left out on purpose. Prompting
+#    for a value the app never reads just invites someone to type junk into a
+#    field that then looks configured. Email is the whole of that category —
+#    see the note at the bottom for turning it on later.
 #
 #  WHY THE SECRETS ARE NOT IN THIS FILE
 #    `sync: false` means "ask me in the dashboard, never store the value in
 #    git". SUPABASE_SERVICE_ROLE_KEY bypasses row-level security and can read
 #    or delete every row in the database; ADMIN_API_KEY opens every /api/admin
 #    route. Neither ever belongs in a committed file.
+#
+#    It has a second effect that matters just as much: a `sync: false` variable
+#    is never overwritten when this file changes. FRONTEND_URL is listed that
+#    way for exactly that reason — set it to the real storefront origin in the
+#    dashboard, and a later push to this file cannot silently revert it and
+#    break CORS on the live shop.
 # =============================================================================
 
 services:
@@ -34,52 +45,62 @@ services:
     healthCheckPath: /health
 
     envVars:
-      - key: NODE_ENV
-        value: production
+      # --- Prompted at deploy: the three the server refuses to start without,
+      #     plus the one that decides whether browsers may talk to it. --------
 
-      # Render injects the real port. config/env.js already reads PORT, and
-      # app.listen binds every interface, so nothing in the code changes.
-      - key: PORT
-        value: 5000
-
-      # --- Secrets: set these in the Render dashboard --------------------
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
       - key: ADMIN_API_KEY
         sync: false
-      - key: BREVO_API_KEY
-        sync: false
 
-      # --- CORS -----------------------------------------------------------
-      # The single most likely thing to break the live site. This must list
-      # the storefront's real origin, or every browser request is blocked and
-      # the shop renders with no products and a CORS error in the console.
+      # The single most likely thing to break the live site. It must list the
+      # storefront's real origin or every browser request is blocked and the
+      # shop renders with no products and a CORS error in the console.
       # Comma-separated, no trailing slashes:
       #   https://nayzatech.workers.dev,https://shop.yourdomain.com
+      # Put a placeholder in now; set it properly once Cloudflare has deployed.
       - key: FRONTEND_URL
         sync: false
 
-      # --- Email ----------------------------------------------------------
-      # Leave EMAIL_ENABLED false until the Brevo sender is verified. An
-      # unverified sender is rejected outright and is the usual reason
-      # confirmation emails silently never arrive.
-      - key: EMAIL_ENABLED
-        value: false
-      - key: BREVO_SENDER_EMAIL
-        sync: false
-      - key: BREVO_SENDER_NAME
-        value: Nayzatech
-      - key: ADMIN_EMAIL
-        sync: false
+      # --- Fixed configuration --------------------------------------------
+      # PORT is deliberately absent. Render injects its own and config/env.js
+      # already reads it; hardcoding one here would override Render's and the
+      # health check would poll a port nothing is listening on.
 
-      # --- Store details --------------------------------------------------
+      - key: NODE_ENV
+        value: production
       - key: STORE_NAME
         value: Nayzatech
       - key: SUPABASE_STORAGE_BUCKET
         value: product-images
-      - key: STORE_URL
-        sync: false
-      - key: STORE_SUPPORT_EMAIL
-        sync: false
+
+      # Off until a Brevo sender is verified. With this false, every send is
+      # logged instead of transmitted, and no Brevo credentials are read at
+      # all — which is why none are prompted for above.
+      - key: EMAIL_ENABLED
+        value: false
+
+# =============================================================================
+#  TURNING EMAIL ON LATER
+#
+#  Order confirmations, contact alerts and status updates all go through Brevo.
+#  To enable them:
+#
+#    1. Create an API key:  app.brevo.com -> SMTP & API -> API Keys
+#    2. VERIFY THE SENDER:  Brevo -> Senders, Domains & Dedicated IPs.
+#       An unverified sender is rejected outright and is the usual reason
+#       confirmation emails silently never arrive.
+#    3. In the Render dashboard, add to this service's environment:
+#         BREVO_API_KEY         the key from step 1
+#         BREVO_SENDER_EMAIL    the address verified in step 2
+#         BREVO_SENDER_NAME     e.g. Nayzatech
+#         ADMIN_EMAIL           where contact-form alerts should land
+#         STORE_URL             the storefront's public address
+#         STORE_SUPPORT_EMAIL   the reply-to shown to customers
+#    4. Flip EMAIL_ENABLED to true here and push.
+#
+#  Add them in the dashboard rather than here: they are account credentials,
+#  and adding them by hand means this file never has to hold one.
+# =============================================================================
