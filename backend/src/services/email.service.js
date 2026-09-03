@@ -10,7 +10,7 @@
  *
  * If Brevo is down when a customer checks out, the order is already safely in
  * the database. Throwing here would return a 500 and the customer would try
- * again, creating a duplicate order and double-deducting stock. So every send
+ * again, creating a duplicate order and a second courier run. So every send
  * catches its own errors, logs them, and returns a result object instead.
  * Callers check the result if they care and carry on if they do not.
  *

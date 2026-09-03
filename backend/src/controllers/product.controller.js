@@ -88,7 +88,9 @@ export const listProducts = asyncHandler(async (req, res) => {
   if (brand) query = query.ilike('brand', brand);
   if (min_price !== undefined) query = query.gte('effective_price', min_price);
   if (max_price !== undefined) query = query.lte('effective_price', max_price);
-  if (in_stock === true) query = query.gt('stock_quantity', 0);
+  // Passed through as-is, so ?in_stock=false is a real filter for sold-out
+  // items and not just an ignored parameter.
+  if (in_stock !== undefined) query = query.eq('in_stock', in_stock);
   if (featured === true) query = query.eq('is_featured', true);
 
   // --- JSONB spec filtering ----------------------------------------------
@@ -166,16 +168,18 @@ export const getProduct = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/products/:id/stock
- * Lightweight availability check for a product page, without refetching
- * the whole record.
+ * GET /api/products/:id/availability
+ *
+ * Lightweight "can this still be ordered" check for a product page, without
+ * refetching the whole record. An inactive product reads as unavailable even
+ * if its in_stock flag is true — being unpublished outranks being in stock.
  */
-export const getProductStock = asyncHandler(async (req, res) => {
+export const getProductAvailability = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   const { data, error } = await supabase
     .from('products')
-    .select('id, name, stock_quantity, low_stock_threshold, is_active')
+    .select('id, name, is_active, in_stock')
     .eq('id', id)
     .maybeSingle();
 
@@ -185,9 +189,7 @@ export const getProductStock = asyncHandler(async (req, res) => {
   return sendSuccess(res, {
     product_id: data.id,
     name: data.name,
-    stock_quantity: data.stock_quantity,
-    in_stock: data.stock_quantity > 0 && data.is_active,
-    is_low_stock: data.stock_quantity > 0 && data.stock_quantity <= data.low_stock_threshold,
+    in_stock: data.is_active && data.in_stock,
   });
 });
 
@@ -387,6 +389,6 @@ export const deleteProduct = asyncHandler(async (req, res) => {
 });
 
 export default {
-  listProducts, getProduct, getProductStock, createProduct, updateProduct,
+  listProducts, getProduct, getProductAvailability, createProduct, updateProduct,
   uploadProductImage, uploadProductGallery, removeGalleryImage, deleteProduct,
 };

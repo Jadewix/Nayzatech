@@ -20,7 +20,6 @@ import {
   createCategorySchema, updateCategorySchema,
   createProductSchema, updateProductSchema,
   orderStatusSchema, orderQuerySchema, contactQuerySchema,
-  updateStockSchema, bulkStockSchema, stockQuerySchema,
   paginationSchema, idParamSchema, deliveryAttemptSchema, updateSettingsSchema,
 } from '../utils/schemas.js';
 
@@ -99,28 +98,6 @@ router.delete(
   productController.removeGalleryImage
 );
 
-/* --- Inventory --------------------------------------------------------- */
-router.get(
-  '/stock',
-  validate({ query: stockQuerySchema }),
-  adminController.listStock
-);
-router.patch(
-  '/products/:id/stock',
-  validate({ params: idParamSchema, body: updateStockSchema }),
-  adminController.updateStock
-);
-router.patch(
-  '/stock/bulk',
-  validate({ body: bulkStockSchema }),
-  adminController.bulkUpdateStock
-);
-router.get(
-  '/products/:id/stock-history',
-  validate({ params: idParamSchema, query: paginationSchema }),
-  adminController.getStockHistory
-);
-
 /* --- Orders ------------------------------------------------------------ */
 // Literal paths before '/orders/:id...' so they are not read as an id.
 router.get('/orders/stats', orderController.getOrderStats);
@@ -141,8 +118,8 @@ router.patch(
   validate({ params: idParamSchema }),
   orderController.updateOrder
 );
-// Courier went and came back empty-handed. Logs the attempt; does NOT restock
-// (the order is still live). Give up with status 'failed_delivery' instead.
+// Courier went and came back empty-handed. Logs the attempt and leaves the
+// order 'shipped' so it can be retried. Give up with status 'failed_delivery'.
 router.post(
   '/orders/:id/delivery-attempt',
   validate({ params: idParamSchema, body: deliveryAttemptSchema }),

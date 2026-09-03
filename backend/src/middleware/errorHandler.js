@@ -7,7 +7,7 @@
  * It also translates errors from lower layers into sensible HTTP statuses:
  *   - zod validation errors      -> 422 with per-field details
  *   - Postgres error codes       -> 409 for duplicates, 400 for constraints
- *   - our SQL functions' prefixes -> 409 INSUFFICIENT_STOCK, 404 PRODUCT_NOT_FOUND
+ *   - our SQL functions' prefixes -> 409 PRODUCT_SOLD_OUT, 404 PRODUCT_NOT_FOUND
  *   - multer upload errors       -> 400 with a readable reason
  *   - anything else              -> 500, with the real cause logged, not sent
  */
@@ -23,7 +23,7 @@ import config from '../config/env.js';
  * This maps that prefix onto the right HTTP status.
  */
 const PG_FUNCTION_ERRORS = {
-  INSUFFICIENT_STOCK:  { status: 409, code: 'INSUFFICIENT_STOCK' },
+  PRODUCT_SOLD_OUT:    { status: 409, code: 'PRODUCT_SOLD_OUT' },
   PRODUCT_NOT_FOUND:   { status: 404, code: 'PRODUCT_NOT_FOUND' },
   PRODUCT_UNAVAILABLE: { status: 409, code: 'PRODUCT_UNAVAILABLE' },
   ORDER_NOT_FOUND:     { status: 404, code: 'ORDER_NOT_FOUND' },
@@ -31,8 +31,6 @@ const PG_FUNCTION_ERRORS = {
   ORDER_TOO_LARGE:     { status: 400, code: 'ORDER_TOO_LARGE' },
   INVALID_QUANTITY:    { status: 400, code: 'INVALID_QUANTITY' },
   INVALID_TRANSITION:  { status: 409, code: 'INVALID_TRANSITION' },
-  INVALID_MODE:        { status: 400, code: 'INVALID_MODE' },
-  INVALID_VALUE:       { status: 400, code: 'INVALID_VALUE' },
   INVALID_PAYLOAD:     { status: 400, code: 'INVALID_PAYLOAD' },
 };
 

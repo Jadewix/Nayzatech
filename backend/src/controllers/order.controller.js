@@ -3,17 +3,18 @@
  *
  * THE CRITICAL PIECE IS createOrder.
  *
- * Everything about stock safety comes down to one decision: the check-and-
- * deduct happens inside a single PostgreSQL transaction (the create_order
- * function in db/02_functions.sql), not in JavaScript.
+ * It builds nothing itself. It hands product ids and quantities to the
+ * create_order function in db/06_remove_inventory.sql, and that function reads
+ * the prices and the delivery fee from the database inside one transaction.
  *
- * If you did it here in Node instead — read stock, check it, then write —
- * two customers checking out at the same instant would both read "1 available",
- * both pass the check, and both deduct. You would sell a laptop you do not
- * have. Postgres row locks close that window; JavaScript cannot.
+ * That split is the whole point: the browser sends what the customer wants to
+ * buy, never what it costs. If totals came from the request body, anyone with
+ * devtools could buy a laptop for a dollar. Keeping the arithmetic in SQL also
+ * means the order, its line items and its totals are written together or not
+ * at all — there is no half-written order to clean up.
  *
  * So this controller's job is small on purpose: validate, call the function,
- * send the email. The dangerous work happens where it is safe.
+ * send the email.
  */
 
 import { supabase } from '../config/supabase.js';
@@ -27,8 +28,8 @@ import { sendOrderConfirmation, sendOrderStatusUpdate } from '../services/email.
  *
  * A React cart can easily send the same product twice ("add to cart" pressed
  * on the product page and again in a recommendation strip). Two separate rows
- * for the same product would each deduct stock and look wrong on the receipt,
- * so collapse them into one line with the summed quantity.
+ * for the same product would look wrong on the receipt and be picked twice in
+ * the warehouse, so collapse them into one line with the summed quantity.
  */
 function consolidateItems(items) {
   const merged = new Map();
@@ -70,9 +71,10 @@ export const createOrder = asyncHandler(async (req, res) => {
 
   const consolidated = consolidateItems(items);
 
-  // One atomic call: locks each product row, verifies stock, deducts it,
-  // writes the order, its items and the inventory audit trail. If any single
-  // item is short, the whole thing rolls back and no partial order survives.
+  // One atomic call: checks every product can be sold, prices it from the
+  // database, adds the delivery fee, and writes the order with its items. If
+  // any single line fails, the whole thing rolls back and no partial order
+  // survives.
   const { data: order, error } = await supabase.rpc('create_order', {
     p_customer_name: customer_name,
     p_customer_email: customer_email,
@@ -82,7 +84,7 @@ export const createOrder = asyncHandler(async (req, res) => {
     p_items: consolidated,
   });
 
-  // Errors raised by the SQL function arrive as 'INSUFFICIENT_STOCK: ...'.
+  // Errors raised by the SQL function arrive as 'PRODUCT_SOLD_OUT: ...'.
   // The central error handler turns that prefix into a proper 409 with a
   // readable message, so the React checkout can show it directly.
   if (error) throw error;
@@ -92,8 +94,8 @@ export const createOrder = asyncHandler(async (req, res) => {
    * that must NOT be allowed to fail the request.
    *
    * If Brevo is down and we awaited-and-threw here, the customer would see an
-   * error, hit checkout again, and place a duplicate order — double-charging
-   * them and double-deducting stock. So: fire it, log the outcome, respond
+   * error, hit checkout again, and place a duplicate order — sending a courier
+   * out twice for the same goods. So: fire it, log the outcome, respond
    * regardless.
    */
   const emailResult = await sendOrderConfirmation(order).catch((err) => {
@@ -115,18 +117,21 @@ export const createOrder = asyncHandler(async (req, res) => {
 });
 
 /**
- * POST /api/orders/check-stock    (public)
+ * POST /api/orders/check-availability    (public)
  *
  * Pre-flight check for the cart page, so a customer finds out about an
- * out-of-stock item BEFORE filling in their address rather than after.
+ * unavailable item BEFORE filling in their address rather than after. It also
+ * returns the money breakdown priced from the database, which is what lets the
+ * cart show the delivery fee without the browser calculating anything.
  *
- * Advisory only. createOrder re-checks under a lock, because stock can change
- * between this call and checkout. Never treat this as a reservation.
+ * Advisory only. create_order checks again at checkout, because a product can
+ * be marked sold out between this call and the order. Never treat it as a
+ * reservation.
  */
-export const checkStock = asyncHandler(async (req, res) => {
+export const checkAvailability = asyncHandler(async (req, res) => {
   const { items } = req.body;
 
-  const { data, error } = await supabase.rpc('check_stock_availability', {
+  const { data, error } = await supabase.rpc('check_availability', {
     p_items: consolidateItems(items),
   });
   if (error) throw error;
@@ -251,9 +256,9 @@ export const listOrders = asyncHandler(async (req, res) => {
  * PATCH /api/admin/orders/:id/status    (admin)
  * Body: { "status": "shipped", "note": "DHL 1234567890", "notify_customer": true }
  *
- * Cancelling returns every item to stock — exactly once, guarded by the
- * stock_restored flag in the database so a double-cancel cannot inflate
- * inventory.
+ * The database owns the state machine. Illegal moves come back as a 409
+ * listing the transitions that ARE allowed, so the admin panel can show them
+ * rather than guess.
  */
 export const updateOrderStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -265,9 +270,9 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
   const previousStatus = existing.status;
 
-  // The SQL function owns the rules: which transitions are legal, returning
-  // stock exactly once on 'cancelled' and 'failed_delivery', and rejecting a
-  // no-op. Duplicating those checks here would mean two places to keep in sync.
+  // The SQL function owns the rules: which transitions are legal, and
+  // rejecting a no-op. Duplicating those checks here would mean two places to
+  // keep in sync.
   const { data: updated, error } = await supabase.rpc('set_order_status', {
     p_order_id: id,
     p_status: status,
@@ -294,7 +299,8 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 /**
  * PATCH /api/admin/orders/:id    (admin)
  * Edit fulfilment details — corrected phone number, address, internal notes.
- * Status changes go through the endpoint above, so stock logic is never bypassed.
+ * Status changes go through the endpoint above, so the lifecycle rules are
+ * never bypassed.
  */
 export const updateOrder = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -303,7 +309,7 @@ export const updateOrder = asyncHandler(async (req, res) => {
   const allowed = ['admin_notes', 'customer_phone', 'shipping_address', 'notes'];
 
   // Whitelist, not blacklist. Copying req.body wholesale would let an admin
-  // (or a bug) overwrite total_amount or status and skip the stock rules.
+  // (or a bug) overwrite total_amount or status and skip the lifecycle rules.
   const payload = {};
   for (const field of allowed) {
     if (req.body[field] !== undefined) payload[field] = req.body[field];
@@ -391,10 +397,9 @@ export const getOrderStats = asyncHandler(async (req, res) => {
  * The courier went and came back with the goods. This logs the attempt but
  * leaves the order 'shipped' so it can be retried.
  *
- * Note what it does NOT do: restock. The order is still live and those items
- * are still spoken for. Only giving up — setting the status to
- * 'failed_delivery' — returns them to the shelf. Conflating the two would put
- * stock back on sale while a courier is still carrying it.
+ * Note what it does NOT do: end the order. A visit that failed is not the same
+ * as a delivery that failed — the customer may simply have been out. Only
+ * giving up, by setting the status to 'failed_delivery', closes the order.
  */
 export const recordDeliveryAttempt = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -410,7 +415,7 @@ export const recordDeliveryAttempt = asyncHandler(async (req, res) => {
     ...data,
     hint:
       data.delivery_attempts >= 3
-        ? 'Three attempts made. Consider marking this failed_delivery to return the stock.'
+        ? 'Three attempts made. Consider closing this as failed_delivery.'
         : undefined,
   });
 });
@@ -444,7 +449,7 @@ export const listPendingConfirmation = asyncHandler(async (req, res) => {
 });
 
 export default {
-  createOrder, checkStock, getOrder, lookupOrder,
+  createOrder, checkAvailability, getOrder, lookupOrder,
   listOrders, updateOrderStatus, updateOrder, getOrderStats,
   recordDeliveryAttempt, listPendingConfirmation,
 };

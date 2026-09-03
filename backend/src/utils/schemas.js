@@ -20,11 +20,21 @@ const price = z.coerce
   .nonnegative('Price cannot be negative')
   .max(9_999_999, 'Price is unrealistically large');
 
-const stockQuantity = z.coerce
-  .number()
-  .int('Stock must be a whole number')
-  .nonnegative('Stock cannot be negative')
-  .max(1_000_000);
+/**
+ * A boolean that survives the trip through a query string or a multipart form.
+ *
+ * z.coerce.boolean() is wrong for this: it applies JavaScript truthiness, so
+ * the STRING "false" coerces to true and `?in_stock=false` would mean the
+ * opposite of what it says. This reads the actual word instead.
+ */
+const booleanFlag = z.preprocess((value) => {
+  if (typeof value === 'string') {
+    const text = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(text)) return true;
+    if (['false', '0', 'no', 'off', ''].includes(text)) return false;
+  }
+  return value;
+}, z.boolean());
 
 /**
  * Shipping address. Structured rather than free text so you can print a label,
@@ -80,8 +90,10 @@ export const createProductSchema = z.object({
   brand: z.string().trim().max(100).optional(),
   base_price: price,
   sale_price: price.nullable().optional(),
-  stock_quantity: stockQuantity.default(0),
-  low_stock_threshold: z.coerce.number().int().nonnegative().default(5),
+  // This store does not count units. `in_stock` is the entire inventory model:
+  // true = orderable, false = shown as sold out. To take a product off the
+  // storefront altogether, use is_active instead.
+  in_stock: booleanFlag.default(true),
   description: z.string().trim().max(20000).optional(),
   short_description: z.string().trim().max(500).optional(),
   image_url: z.string().url().nullable().optional(),
@@ -109,8 +121,7 @@ export const updateProductSchema = z.object({
   brand: z.string().trim().max(100).nullable().optional(),
   base_price: price.optional(),
   sale_price: price.nullable().optional(),
-  stock_quantity: stockQuantity.optional(),
-  low_stock_threshold: z.coerce.number().int().nonnegative().optional(),
+  in_stock: booleanFlag.optional(),
   description: z.string().trim().max(20000).nullable().optional(),
   short_description: z.string().trim().max(500).nullable().optional(),
   image_url: z.string().url().nullable().optional(),
@@ -127,7 +138,7 @@ export const productQuerySchema = paginationSchema.extend({
   brand: z.string().trim().max(100).optional(),
   min_price: z.coerce.number().nonnegative().optional(),
   max_price: z.coerce.number().nonnegative().optional(),
-  in_stock: z.coerce.boolean().optional(),
+  in_stock: booleanFlag.optional(),
   featured: z.coerce.boolean().optional(),
   include_inactive: z.coerce.boolean().default(false),   // admin only
   sort: z
@@ -202,7 +213,7 @@ export const createOrderSchema = z.object({
     .max(100, 'Too many items in one order'),
 });
 
-export const checkStockSchema = z.object({
+export const checkAvailabilitySchema = z.object({
   items: z.array(orderItemSchema).min(1, 'Send at least one item to check'),
 });
 
@@ -266,49 +277,7 @@ export const createContactSchema = z.object({
 });
 
 export const contactQuerySchema = paginationSchema.extend({
-  is_read: z.coerce.boolean().optional(),
-  search: z.string().trim().max(150).optional(),
-});
-
-/* -------------------------------------------------------------------------
- *  ADMIN — STOCK
- * ---------------------------------------------------------------------- */
-
-export const updateStockSchema = z.object({
-  /**
-   * 'set'   — stock becomes exactly `value`. Use after a physical stock count.
-   * 'delta' — stock changes BY `value`. Use when a shipment arrives (+20)
-   *           or something breaks (-1). Safer under concurrency: two
-   *           simultaneous deltas both apply, whereas two 'set' calls means
-   *           the last one silently wins.
-   */
-  mode: z.enum(['set', 'delta']).default('set'),
-  value: z.coerce.number().int('Stock must be a whole number'),
-  reason: z
-    .enum(['restock', 'manual_adjustment', 'damaged', 'returned'])
-    .default('manual_adjustment'),
-  note: z.string().trim().max(500).optional(),
-});
-
-export const bulkStockSchema = z.object({
-  updates: z
-    .array(
-      z.object({
-        product_id: uuidSchema,
-        mode: z.enum(['set', 'delta']).default('set'),
-        value: z.coerce.number().int(),
-        reason: z.enum(['restock', 'manual_adjustment', 'damaged', 'returned']).default('restock'),
-        note: z.string().trim().max(500).optional(),
-      })
-    )
-    .min(1, 'Send at least one update')
-    .max(200, 'Maximum 200 updates per request'),
-});
-
-export const stockQuerySchema = paginationSchema.extend({
-  low_stock_only: z.coerce.boolean().default(false),
-  out_of_stock_only: z.coerce.boolean().default(false),
-  category: z.string().trim().optional(),
+  is_read: booleanFlag.optional(),
   search: z.string().trim().max(150).optional(),
 });
 
@@ -341,7 +310,7 @@ export const updateSettingsSchema = z.object({
     .optional(),
   currency: z.string().trim().length(3, 'Use a 3-letter code such as USD').toUpperCase().optional(),
   // Setting this false pauses checkout without taking the site down —
-  // useful for a stock count, a holiday, or a courier strike.
+  // useful for a holiday, a supplier problem, or a courier strike.
   cod_enabled: z.boolean().optional(),
 }).refine((data) => Object.keys(data).length > 0, {
   message: 'Send at least one setting to change',

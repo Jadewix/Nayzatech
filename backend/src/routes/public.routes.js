@@ -15,7 +15,7 @@ import * as contactController from '../controllers/contact.controller.js';
 import * as settingsController from '../controllers/settings.controller.js';
 import {
   categoryQuerySchema, productQuerySchema, createOrderSchema,
-  checkStockSchema, createContactSchema, idParamSchema, idOrSlugParamSchema,
+  checkAvailabilitySchema, createContactSchema, idParamSchema, idOrSlugParamSchema,
 } from '../utils/schemas.js';
 import { checkoutLimiter, contactLimiter } from '../middleware/rateLimit.js';
 
@@ -49,12 +49,12 @@ router.get(
   productController.listProducts
 );
 router.get(
-  '/products/:id/stock',
+  '/products/:id/availability',
   validate({ params: idParamSchema }),
-  productController.getProductStock
+  productController.getProductAvailability
 );
 // Registered LAST of the product routes: ':idOrSlug' matches anything, so it
-// would otherwise swallow '/products/:id/stock' before that route is reached.
+// would otherwise swallow '/products/:id/availability' before that route is reached.
 router.get(
   '/products/:idOrSlug',
   validate({ params: idOrSlugParamSchema }),
@@ -71,9 +71,9 @@ router.post(
   orderController.createOrder
 );
 router.post(
-  '/orders/check-stock',
-  validate({ body: checkStockSchema }),
-  orderController.checkStock
+  '/orders/check-availability',
+  validate({ body: checkAvailabilitySchema }),
+  orderController.checkAvailability
 );
 // Before '/orders/:id', or 'lookup' would be read as an order id.
 router.get('/orders/lookup', orderController.lookupOrder);
