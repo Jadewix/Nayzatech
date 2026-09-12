@@ -2,37 +2,24 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getProducts, getCategories, getStoreInfo } from '@/lib/api';
 import ProductGrid from '@/components/ProductGrid';
+import SearchBar from '@/components/SearchBar';
+import SpecPlate from '@/components/SpecPlate';
 import { money } from '@/lib/format';
 
 /**
  * Home page.
  *
- * This is a SERVER component (the default in the App Router — note there is no
- * 'use client' at the top). The data is fetched on the server and the browser
- * receives finished HTML. That is the whole reason to use Next.js for a store:
- * Google sees your product names and prices, so people can find them by
- * searching. A client-rendered app would serve an empty page to the crawler.
+ * A SERVER component (no 'use client'): data is fetched on the server and the
+ * browser receives finished HTML, so Google indexes product names and prices.
+ * The only client island is the search box, which ships its own small bundle.
  *
- * WHAT IS NOT ON THIS PAGE, AND WHY
- * ---------------------------------
- * The layout it is modelled on carries a five-star review badge and a strip of
- * manufacturer logos. Both are omitted: this shop has no reviews yet, and it
- * does not stock those manufacturers. A shop that opens with a borrowed badge
- * is the kind customers stop trusting the moment they notice.
- *
- * What replaces them is the thing that is true and unusual here — you pay the
- * courier, in cash, at the door — so the hero and the strip below it both say
- * that instead.
+ * Designed phone-first. The order down the page — search, departments, featured
+ * gear, the catalogue — is the order a shopper on a phone actually wants: find
+ * the thing, or browse into it. What this page does NOT do is lecture about how
+ * paying works; cash on delivery is explained once, at checkout, where it is
+ * about to matter.
  */
 export default async function HomePage() {
-  /**
-   * Promise.all runs these requests at the same time rather than one after
-   * another. Sequential awaits here would make the page three times slower for
-   * no reason.
-   *
-   * .catch() on each one means a single failing endpoint degrades that section
-   * instead of blanking the whole homepage.
-   */
   const [featured, newest, categories, storeInfo] = await Promise.all([
     getProducts({ featured: true, limit: 4 }).catch(() => []),
     getProducts({ sort: 'newest', limit: 8 }).catch(() => []),
@@ -50,35 +37,40 @@ export default async function HomePage() {
    */
   const featuredIds = new Set(featured.map((p) => p.id));
   const arrivals = newest.filter((p) => !featuredIds.has(p.id)).slice(0, 8);
+  const spotlight = featured[0] || newest[0] || null;
 
   return (
     <div>
       {/* ================= HERO ================= */}
-      <section className="mx-auto max-w-6xl px-4 pt-6">
-        <div className="overflow-hidden rounded-2xl bg-brand text-white">
-          <div className="grid items-center gap-8 p-8 sm:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:p-14">
+      <section className="mx-auto max-w-6xl px-4 pt-4 sm:pt-6">
+        <div className="hero-mesh overflow-hidden rounded-3xl text-white">
+          <div className="grid items-center gap-8 p-6 sm:p-10 lg:grid-cols-[1.1fr_0.9fr] lg:p-14">
             <div>
-              <p className="eyebrow text-white/70">Cash on delivery</p>
-              <h1 className="display mt-4 text-4xl sm:text-5xl lg:text-[3.4rem]">
-                Nothing to pay
+              <p className="eyebrow text-white/70">Laptops · PC parts · Accessories</p>
+              <h1 className="display mt-4 text-[2.5rem] leading-[1.02] sm:text-5xl lg:text-[3.4rem]">
+                Everything your
                 <br />
-                until it arrives.
+                setup needs.
               </h1>
               <p className="mt-5 max-w-md leading-relaxed text-white/80">
-                Laptops, PC parts, phone cases and everyday electronics. Order in a
-                minute, we call to confirm, and you hand the courier the cash at your
-                door.
+                Laptops, components, phone cases and everyday electronics —
+                search for what you came for, or browse the whole shop.
               </p>
 
-              <div className="mt-7 flex flex-wrap items-center gap-3">
+              {/* The search box is the hero's primary action on every screen. */}
+              <div className="mt-7 max-w-md">
+                <SearchBar variant="hero" />
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Link
                   href="/products"
-                  className="inline-flex min-h-12 items-center rounded-lg bg-ink px-6 py-3 text-[0.95rem] font-medium text-white transition-opacity hover:opacity-90"
+                  className="inline-flex min-h-12 items-center rounded-full bg-white px-6 py-3 text-[0.95rem] font-semibold text-ink transition-transform hover:-translate-y-0.5"
                 >
                   Browse everything
                 </Link>
                 {threshold > 0 && (
-                  <span className="inline-flex min-h-12 items-center rounded-lg bg-white/10 px-4 py-3 text-sm text-white/90">
+                  <span className="inline-flex min-h-12 items-center rounded-full bg-white/10 px-4 py-3 text-sm text-white/90 ring-1 ring-inset ring-white/15">
                     Free delivery over {money(threshold)}
                   </span>
                 )}
@@ -87,25 +79,46 @@ export default async function HomePage() {
 
             {/*
               The reference fills this half with a lifestyle photograph. There
-              isn't one, so it holds the docket instead: the three steps of a
-              cash-on-delivery order, which is the actual difference between
-              this shop and every other electronics shop. Hidden on small
-              screens, where the headline above already says it.
+              isn't one, so it holds a real product instead — the first featured
+              item, floated on the gradient as a single glowing card. Real gear,
+              real price, one tap in. Hidden on phones, where the search above is
+              already the whole point.
             */}
-            <div className="hidden rounded-xl bg-ink/25 p-6 lg:block">
-              <p className="eyebrow text-white/50">How an order works</p>
-              <ol className="mt-5 space-y-5">
-                <Step number="01" title="You order">
-                  Product ids and quantities only. No card, no account.
-                </Step>
-                <Step number="02" title="We call">
-                  A real person confirms the order before anything is packed.
-                </Step>
-                <Step number="03" title="You pay the courier">
-                  Cash, at the door, once it is in your hands.
-                </Step>
-              </ol>
-            </div>
+            {spotlight && (
+              <Link
+                href={`/products/${spotlight.slug}`}
+                className="group hidden lg:block"
+              >
+                <div className="rounded-2xl bg-white/10 p-3 ring-1 ring-inset ring-white/15 backdrop-blur-sm transition-transform duration-300 group-hover:-translate-y-1">
+                  <div className="relative aspect-square overflow-hidden rounded-xl bg-surface">
+                    {spotlight.image_url ? (
+                      <Image
+                        src={spotlight.image_url}
+                        alt={spotlight.name}
+                        fill
+                        sizes="40vw"
+                        className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <SpecPlate product={spotlight} />
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-3 px-1 pb-1 pt-3 text-white">
+                    <div className="min-w-0">
+                      <p className="eyebrow text-white/50">Featured</p>
+                      <p className="mt-1 truncate font-semibold">{spotlight.name}</p>
+                    </div>
+                    <span className="tabular shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-ink">
+                      {money(
+                        spotlight.effective_price ??
+                          spotlight.sale_price ??
+                          spotlight.base_price
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -115,14 +128,15 @@ export default async function HomePage() {
         <Section
           eyebrow="Departments"
           title="Shop by category"
+          action={{ href: '/products', label: 'View all' }}
           className="mx-auto max-w-6xl px-4"
         >
           <div className="rail sm:grid sm:grid-cols-2 lg:grid-cols-4">
-            {topLevel.map((category) => (
+            {topLevel.map((category, i) => (
               <Link
                 key={category.id}
                 href={`/products?category=${category.slug}`}
-                className="group relative w-[68vw] max-w-[16rem] overflow-hidden rounded-xl border border-line bg-surface transition-colors hover:border-brand sm:w-auto sm:max-w-none"
+                className="card-lift group w-[62vw] max-w-[15rem] overflow-hidden rounded-2xl border border-line bg-paper sm:w-auto sm:max-w-none"
               >
                 <div className="relative aspect-[4/3]">
                   {category.image_url ? (
@@ -130,37 +144,29 @@ export default async function HomePage() {
                       src={category.image_url}
                       alt={category.name}
                       fill
-                      sizes="(max-width: 640px) 68vw, 25vw"
+                      sizes="(max-width: 640px) 62vw, 25vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    /* Same treatment as an image-less product: dark tray, real
-                       information, no apology. The description is clamped to one
-                       line so every tile's name sits on the same baseline. */
-                    <div className="relative flex h-full flex-col justify-end bg-tray p-4">
-                      <div
-                        aria-hidden="true"
-                        className="pointer-events-none absolute inset-0 opacity-[0.16]"
-                        style={{
-                          backgroundImage:
-                            'linear-gradient(to right, var(--color-tray-2) 1px, transparent 1px), linear-gradient(to bottom, var(--color-tray-2) 1px, transparent 1px)',
-                          backgroundSize: '24px 24px',
-                        }}
-                      />
-                      <p className="relative display text-lg text-white">{category.name}</p>
-                      {category.description && (
-                        <p className="relative mt-1 line-clamp-1 text-xs leading-relaxed text-tray-ink">
-                          {category.description}
-                        </p>
-                      )}
+                    /* No photo yet: a bright, tinted panel rather than a grey box,
+                       cycling through a few brand-family washes so a row of them
+                       reads as a set instead of a repeat. */
+                    <div
+                      className={`flex h-full flex-col justify-end p-4 ${CATEGORY_TINTS[i % CATEGORY_TINTS.length]}`}
+                    >
+                      <p className="display text-xl text-ink">{category.name}</p>
                     </div>
                   )}
                 </div>
-                {category.image_url && (
-                  <div className="p-4">
-                    <p className="font-semibold">{category.name}</p>
-                  </div>
-                )}
+                <div className="flex items-center justify-between gap-2 p-4">
+                  <p className="font-semibold">{category.name}</p>
+                  <span
+                    aria-hidden="true"
+                    className="text-brand transition-transform group-hover:translate-x-1"
+                  >
+                    →
+                  </span>
+                </div>
               </Link>
             ))}
           </div>
@@ -179,23 +185,25 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {/* ================= FULL-BLEED BAND ================= */}
-      <section className="mt-20 bg-ink text-white">
-        <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 lg:grid-cols-[1.2fr_0.8fr] lg:items-end lg:py-20">
-          <div>
-            <p className="eyebrow text-white/40">Why cash on delivery</p>
-            <h2 className="display mt-4 text-3xl sm:text-4xl">
-              You have not spent anything
-              <br className="hidden sm:block" /> until you are holding it.
-            </h2>
+      {/* ================= DELIVERY BAND ================= */}
+      {threshold > 0 && (
+        <section className="mx-auto mt-20 max-w-6xl px-4">
+          <div className="hero-mesh flex flex-col items-start justify-between gap-5 rounded-3xl p-7 text-white sm:flex-row sm:items-center sm:p-9">
+            <div>
+              <p className="eyebrow text-white/60">On the house</p>
+              <p className="display mt-2 text-2xl sm:text-3xl">
+                Free delivery over {money(threshold)}
+              </p>
+            </div>
+            <Link
+              href="/products"
+              className="inline-flex min-h-12 items-center rounded-full bg-white px-6 py-3 text-[0.95rem] font-semibold text-ink transition-transform hover:-translate-y-0.5"
+            >
+              Fill the cart
+            </Link>
           </div>
-          <p className="leading-relaxed text-white/60">
-            No card details are entered on this site, so there is nothing to be
-            leaked and nothing to charge back. If the courier arrives and the
-            order is wrong, you simply do not pay.
-          </p>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ================= NEW ARRIVALS ================= */}
       <Section
@@ -212,6 +220,14 @@ export default async function HomePage() {
     </div>
   );
 }
+
+/* A few brand-family washes for photo-less category tiles. */
+const CATEGORY_TINTS = [
+  'bg-brand-dim',
+  'bg-surface',
+  'bg-sale-dim',
+  'bg-cash-dim',
+];
 
 /**
  * A page section: monospace eyebrow, display heading, optional link on the
@@ -237,22 +253,5 @@ function Section({ eyebrow, title, action, className = '', children }) {
       </div>
       {children}
     </section>
-  );
-}
-
-/**
- * One step of the hero docket. Numbered because these genuinely are a sequence
- * — the call has to happen before the courier leaves — not because numbers look
- * tidy.
- */
-function Step({ number, title, children }) {
-  return (
-    <li className="flex gap-4">
-      <span className="mt-0.5 font-mono text-xs tracking-widest text-white/40">{number}</span>
-      <div>
-        <p className="font-semibold">{title}</p>
-        <p className="mt-0.5 text-sm leading-relaxed text-white/60">{children}</p>
-      </div>
-    </li>
   );
 }

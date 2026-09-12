@@ -156,7 +156,8 @@ export default async function OrderPage({ params, searchParams }) {
       </div>
 
       <p className="text-xs text-muted mt-6">
-        Save this page — it is your tracking link and does not need a login.
+        Bookmark this page — it is your order receipt and needs no login. The
+        same link is in your confirmation email.
       </p>
     </div>
   );

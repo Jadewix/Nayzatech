@@ -5,10 +5,9 @@ const STORE_NAME = process.env.NEXT_PUBLIC_STORE_NAME || 'Tech Store';
 /**
  * The footer.
  *
- * The reference layout ends on a row of card logos. This shop takes no cards —
- * it takes cash, at the door — so that row would be a lie told in pictograms.
- * The same slot says what is actually true instead, which is also the strongest
- * thing the shop has to say about paying.
+ * Its job is to be a second, calmer navigation — the links a shopper scrolls to
+ * the bottom looking for — not a place to re-explain how paying works. So it is
+ * columns of real destinations: the catalogue and the departments within it.
  *
  * The oversized wordmark is the one piece of pure decoration on the page, and
  * it is cropped by the viewport on purpose: it reads as a printed edge rather
@@ -31,22 +30,22 @@ export default function Footer() {
           <FooterColumn title="Shop">
             <FooterLink href="/products">All products</FooterLink>
             <FooterLink href="/products?featured=true">Featured</FooterLink>
-            <FooterLink href="/products?category=laptops">Laptops</FooterLink>
-            <FooterLink href="/products?category=pc-parts">PC parts</FooterLink>
+            <FooterLink href="/products?in_stock=true">In stock</FooterLink>
+            <FooterLink href="/cart">Cart</FooterLink>
           </FooterColumn>
 
-          <FooterColumn title="Your order">
-            <FooterLink href="/cart">Cart</FooterLink>
-            <FooterLink href="/track">Track an order</FooterLink>
-            <FooterLink href="/checkout">Checkout</FooterLink>
+          <FooterColumn title="Departments">
+            <FooterLink href="/products?category=laptops">Laptops</FooterLink>
+            <FooterLink href="/products?category=pc-parts">PC parts</FooterLink>
+            <FooterLink href="/products?category=phone-cases">Phone cases</FooterLink>
+            <FooterLink href="/products?category=accessories">Accessories</FooterLink>
           </FooterColumn>
 
           <div>
-            <p className="eyebrow text-white/40">How you pay</p>
+            <p className="eyebrow text-white/40">Delivery</p>
             <p className="mt-3 text-sm leading-relaxed text-white/70">
-              Cash on delivery. Nothing is charged online and no card details are ever
-              entered — you hand the money to the courier when your order arrives, and
-              not before.
+              We call to confirm every order before it ships, then bring it to
+              your door.
             </p>
           </div>
         </div>
@@ -66,7 +65,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-5 text-xs text-white/40">
           <p>© {year} {STORE_NAME}</p>
-          <p className="eyebrow">Cash on delivery only</p>
+          <p className="eyebrow">Laptops · Parts · Accessories</p>
         </div>
       </div>
     </footer>

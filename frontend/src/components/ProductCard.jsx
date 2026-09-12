@@ -30,7 +30,7 @@ export default function ProductCard({ product }) {
   return (
     <Link
       href={`/products/${product.slug}`}
-      className="group flex flex-col overflow-hidden rounded-xl border border-line bg-paper transition-colors hover:border-brand"
+      className="card-lift group flex flex-col overflow-hidden rounded-2xl border border-line bg-paper hover:border-brand"
     >
       <div className="relative aspect-square overflow-hidden bg-surface">
         {product.image_url ? (

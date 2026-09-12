@@ -9,8 +9,8 @@ import { useCart } from './CartProvider';
  *
  * HIG (Layout > Platform > Mobile): the standard primary-navigation pattern on
  * mobile is a bottom tab bar, not a hidden menu. The desktop header's nav is
- * `hidden sm:flex`, so without this a phone user could reach only the cart —
- * Shop and Track were unreachable. Fixed to the bottom, where the thumb rests.
+ * `hidden sm:flex`, so without this a phone user could reach only the cart.
+ * Fixed to the bottom, where the thumb rests.
  *
  * Hidden from `sm:` up, where the top header takes over. Each target is a full
  * tab column, comfortably past the 44pt minimum touch size, and the whole bar
@@ -20,7 +20,6 @@ import { useCart } from './CartProvider';
 const TABS = [
   { href: '/', label: 'Home', match: (p) => p === '/', icon: HomeIcon },
   { href: '/products', label: 'Shop', match: (p) => p.startsWith('/products'), icon: GridIcon },
-  { href: '/track', label: 'Track', match: (p) => p.startsWith('/track') || p.startsWith('/orders'), icon: TruckIcon },
   { href: '/cart', label: 'Cart', match: (p) => p.startsWith('/cart') || p.startsWith('/checkout'), icon: BagIcon, badge: true },
 ];
 
@@ -113,22 +112,6 @@ function GridIcon({ active }) {
           fillOpacity={op}
         />
       ))}
-    </Svg>
-  );
-}
-
-function TruckIcon() {
-  return (
-    <Svg>
-      <path
-        d="M3 6.5h10v8H3zM13 9.5h4l3 3v2h-7z"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <circle cx="7" cy="17" r="1.8" stroke="currentColor" strokeWidth="1.7" fill="none" />
-      <circle cx="17" cy="17" r="1.8" stroke="currentColor" strokeWidth="1.7" fill="none" />
     </Svg>
   );
 }

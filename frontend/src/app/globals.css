@@ -22,6 +22,7 @@
   --color-line:      #e3e8ef;
   --color-brand:     #1a6ae0;
   --color-brand-dim: #e9f1fe;
+  --color-brand-2:   #7c3aed;  /* violet — only ever the far end of the hero gradient */
   --color-sale:      #dd5f0d;
   --color-sale-dim:  #fdf0e6;
 
@@ -100,6 +101,40 @@ body {
 
 /* Prices and quantities line up in columns, so give digits equal width. */
 .tabular { font-variant-numeric: tabular-nums; }
+
+/*
+ * The hero ground.
+ *
+ * A flat blue block reads as a corporate banner. Layering three soft radial
+ * washes — brand blue, a violet corner and a deep-navy floor — over the base
+ * colour turns the same rectangle into something with depth and light, which is
+ * most of what "give it life" means without adding a single image. The violet
+ * (--color-brand-2) exists only here; it never marks anything clickable, so the
+ * page keeps its one-blue rule everywhere a shopper actually decides.
+ */
+.hero-mesh {
+  background-color: var(--color-brand);
+  background-image:
+    radial-gradient(115% 120% at 3% 0%,   #2f83ff 0%, transparent 55%),
+    radial-gradient(120% 130% at 100% 4%, var(--color-brand-2) 0%, transparent 52%),
+    radial-gradient(130% 120% at 92% 100%, #0a327f 0%, transparent 58%);
+}
+
+/*
+ * A card that answers the finger. On hover it lifts a few pixels and casts a
+ * soft shadow — the small physical cue that a whole tile is one tap target. The
+ * reduced-motion block above already neutralises the transition for anyone who
+ * asked the OS to stop animations.
+ */
+.card-lift {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+@media (hover: hover) {
+  .card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px -14px rgba(11, 15, 22, 0.28);
+  }
+}
 
 /*
  * A horizontal rail that scrolls on a phone and becomes an ordinary grid above
