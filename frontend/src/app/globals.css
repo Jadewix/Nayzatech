@@ -162,6 +162,15 @@ body {
 }
 
 /*
+ * Hide a scrollbar without disabling the scroll (HIG: Layout — a horizontal
+ * row of chips is scrolled by touch, and the half-visible next chip is the
+ * affordance, not a scrollbar). Unlike `.rail` this applies at every width,
+ * because the category chips scroll on a narrow desktop window too.
+ */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/*
  * Safe-area insets (HIG: Layout > Safe areas).
  *
  * On phones with a notch or home indicator, the OS reserves strips at the top
