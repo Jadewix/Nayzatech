@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { listPendingConfirmation, listOrders } from '@/lib/adminApi';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import OrderCard from '@/components/admin/OrderCard';
 import { ALL_STATUSES, STATUS_LABELS } from '@/components/admin/OrderStatus';
 
@@ -59,10 +59,10 @@ export default function OrdersDashboardPage() {
 
   return (
     <div>
-      <AdminHeader current="orders" />
+      <AdminPageHeader title="Orders" />
 
       {/* Tabs */}
-      <div className="mt-7 flex gap-2">
+      <div className="mt-6 flex gap-2">
         <Tab active={tab === 'queue'} onClick={() => setTab('queue')} count={queue.length}>
           Needs a call
         </Tab>

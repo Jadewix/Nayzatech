@@ -41,6 +41,26 @@ export function formatDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { dateStyle: 'long' });
 }
 
+/**
+ * How long ago, in the shortest form that is still unambiguous.
+ *
+ * The admin queue is read at a glance — "3h" answers "is this urgent?" faster
+ * than a timestamp does, because it saves the reader doing the subtraction.
+ */
+export function timeAgo(iso) {
+  if (!iso) return '';
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (!Number.isFinite(seconds)) return '';
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return formatDate(iso);
+}
+
 /** Human label for an order status. */
 export const STATUS_LABELS = {
   pending: 'Awaiting confirmation',

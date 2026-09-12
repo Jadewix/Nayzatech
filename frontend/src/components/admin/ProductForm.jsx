@@ -174,7 +174,7 @@ export default function ProductForm({ product = null }) {
         }
       }
 
-      router.push('/admin');
+      router.push('/admin/products');
       router.refresh();
     } catch (err) {
       if (err.code === 'VALIDATION_ERROR' && err.details) {
@@ -196,7 +196,7 @@ export default function ProductForm({ product = null }) {
         <h1 className="text-[1.85rem] font-bold leading-tight tracking-tight text-ink">
           {isEdit ? 'Edit product' : 'Add product'}
         </h1>
-        <Link href="/admin" className="text-sm text-muted hover:text-ink">
+        <Link href="/admin/products" className="text-sm text-muted hover:text-ink">
           Cancel
         </Link>
       </div>
@@ -394,7 +394,7 @@ export default function ProductForm({ product = null }) {
         >
           {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Create product'}
         </button>
-        <Link href="/admin" className="text-sm text-muted hover:text-ink">
+        <Link href="/admin/products" className="text-sm text-muted hover:text-ink">
           Cancel
         </Link>
       </div>

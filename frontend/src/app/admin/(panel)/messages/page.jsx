@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { listMessages, setMessageRead, deleteMessage } from '@/lib/adminApi';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
 /**
  * The contact inbox.
@@ -86,9 +86,9 @@ export default function MessagesPage() {
 
   return (
     <div>
-      <AdminHeader current="messages" />
+      <AdminPageHeader title="Inbox" />
 
-      <div className="mt-7 flex items-center justify-between gap-3">
+      <div className="mt-6 flex items-center justify-between gap-3">
         <p className="text-sm text-muted">
           {unreadCount > 0
             ? `${unreadCount} unread ${unreadCount === 1 ? 'message' : 'messages'}`

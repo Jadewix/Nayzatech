@@ -8,7 +8,7 @@ import {
   updateCategory,
   deleteCategory,
 } from '@/lib/adminApi';
-import AdminHeader from '@/components/admin/AdminHeader';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
 /**
  * Categories.
@@ -71,15 +71,15 @@ export default function CategoriesPage() {
 
   return (
     <div>
-      <AdminHeader current="categories">
+      <AdminPageHeader title="Categories">
         <button
           type="button"
           onClick={() => setEditing('new')}
-          className="rounded-md bg-accent px-5 py-3 text-xs font-semibold tracking-[0.12em] uppercase text-paper hover:opacity-90"
+          className="inline-flex min-h-11 items-center rounded-lg bg-accent px-5 text-xs font-semibold uppercase tracking-[0.12em] text-paper hover:opacity-90"
         >
           + Add category
         </button>
-      </AdminHeader>
+      </AdminPageHeader>
 
       {error && (
         <p className="mt-4 rounded-md border border-alert/20 bg-alert-dim px-3 py-2 text-sm text-alert">
