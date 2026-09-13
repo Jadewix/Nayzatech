@@ -5,88 +5,68 @@ const STORE_NAME = process.env.NEXT_PUBLIC_STORE_NAME || 'Tech Store';
 /**
  * The footer.
  *
- * Its job is to be a second, calmer navigation — the links a shopper scrolls to
- * the bottom looking for — not a place to re-explain how paying works. So it is
- * columns of real destinations: the catalogue and the departments within it.
+ * Deliberately small. It used to end on an oversized wordmark set at 19vw,
+ * which on a phone was most of a screen's height spent on decoration, plus
+ * three columns of links and a paragraph about delivery. All of that pushed the
+ * one row people actually look for — the credits — off the bottom of the
+ * screen.
  *
- * The oversized wordmark is the one piece of pure decoration on the page, and
- * it is cropped by the viewport on purpose: it reads as a printed edge rather
- * than a logo that failed to fit.
+ * What is left is the part that earns its space twice: a short row of
+ * catalogue links, which is both the navigation someone scrolls down looking
+ * for AND the internal linking that gives a crawler a path to every department
+ * from any page on the site. Descriptive anchor text ("Laptops", not "here")
+ * is doing SEO work, so it stays.
+ *
+ * THE BOTTOM PADDING IS NOT ARBITRARY
+ * -----------------------------------
+ * On phones a fixed tab bar sits over the bottom of the viewport. The layout
+ * gives <main> bottom padding to clear it, but this footer is main's sibling,
+ * so it never got any — the credits row was rendering underneath the tab bar.
+ * pb-28 clears it, and drops back to normal spacing at sm: where the tab bar
+ * is gone.
  */
 export default function Footer() {
   const year = new Date().getFullYear();
 
+  const links = [
+    ['/products', 'All products'],
+    ['/products?category=laptops', 'Laptops'],
+    ['/products?category=pc-parts', 'PC parts'],
+    ['/products?category=phone-cases', 'Phone cases'],
+    ['/products?category=accessories', 'Accessories'],
+  ];
+
   return (
-    <footer className="mt-24 bg-ink text-white">
-      <div className="mx-auto max-w-6xl px-4 pt-14">
-        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-1">
-            <p className="display text-2xl">{STORE_NAME}</p>
-            <p className="mt-2 max-w-xs text-sm leading-relaxed text-white/60">
-              Laptops, PC parts, phone cases and everyday electronics.
-            </p>
-          </div>
+    <footer className="mt-20 bg-ink text-white">
+      <div className="mx-auto max-w-6xl px-4 pt-8 pb-28 sm:pt-10 sm:pb-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+          <Link href="/" className="display shrink-0 text-lg">
+            {STORE_NAME}
+          </Link>
 
-          <FooterColumn title="Shop">
-            <FooterLink href="/products">All products</FooterLink>
-            <FooterLink href="/products?featured=true">Featured</FooterLink>
-            <FooterLink href="/products?in_stock=true">In stock</FooterLink>
-            <FooterLink href="/cart">Cart</FooterLink>
-          </FooterColumn>
-
-          <FooterColumn title="Departments">
-            <FooterLink href="/products?category=laptops">Laptops</FooterLink>
-            <FooterLink href="/products?category=pc-parts">PC parts</FooterLink>
-            <FooterLink href="/products?category=phone-cases">Phone cases</FooterLink>
-            <FooterLink href="/products?category=accessories">Accessories</FooterLink>
-          </FooterColumn>
-
-          <div>
-            <p className="eyebrow text-white/40">Delivery</p>
-            <p className="mt-3 text-sm leading-relaxed text-white/70">
-              We call to confirm every order before it ships, then bring it to
-              your door.
-            </p>
-          </div>
+          <nav aria-label="Footer">
+            <ul className="flex flex-wrap gap-x-5 gap-y-1.5">
+              {links.map(([href, label]) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="inline-block py-1 text-sm text-white/65 transition-colors hover:text-white"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
 
-        {/*
-          The wordmark, set to the full width of the container and clipped at the
-          baseline. `select-none` because it is texture, not text to copy.
-        */}
-        <p
-          aria-hidden="true"
-          className="display mt-14 -mb-3 select-none overflow-hidden text-[19vw] leading-[0.78] text-white/[0.06] lg:text-[11rem]"
-        >
-          {STORE_NAME}
-        </p>
-      </div>
-
-      <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-5 text-xs text-white/40">
+        {/* Credits. Side by side at every width — both lines are short enough
+            to fit a 320px screen without wrapping. */}
+        <div className="mt-6 flex items-center justify-between gap-4 border-t border-white/10 pt-4 text-xs text-white/40">
           <p>© {year} {STORE_NAME}</p>
-          <p className="eyebrow">Laptops · Parts · Accessories</p>
+          <p>Developed by Planck</p>
         </div>
       </div>
     </footer>
-  );
-}
-
-function FooterColumn({ title, children }) {
-  return (
-    <div>
-      <p className="eyebrow text-white/40">{title}</p>
-      <ul className="mt-3 space-y-2 text-sm">{children}</ul>
-    </div>
-  );
-}
-
-function FooterLink({ href, children }) {
-  return (
-    <li>
-      <Link href={href} className="text-white/70 transition-colors hover:text-white">
-        {children}
-      </Link>
-    </li>
   );
 }
