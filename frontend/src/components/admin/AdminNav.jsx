@@ -13,10 +13,10 @@ import { signOut, getDashboard } from '@/lib/adminApi';
  * Every screen used to reach the others through a chevron beside the page
  * title. That hid the whole panel behind a tap and gave no sense of where you
  * were or what was waiting — the two things navigation exists to answer. Worse,
- * the counts that tell you there is work to do (orders needing a call, unread
- * messages) were only visible *after* opening the menu.
+ * the count that tells you there is work to do — orders still waiting on a
+ * confirmation call — was only visible *after* opening the menu.
  *
- * Now the destinations are always on screen, and the counts sit on them:
+ * Now the destinations are always on screen, and the count sits on them:
  *   phone   — a bottom tab bar, thumb-reachable, the platform-standard pattern
  *   desktop — a fixed sidebar, which is the same information without the
  *             compromise a small screen forces
@@ -30,13 +30,12 @@ const ITEMS = [
   { href: '/admin/orders',     label: 'Orders',     icon: OrderIcon, badge: 'orders' },
   { href: '/admin/products',   label: 'Products',   icon: BoxIcon },
   { href: '/admin/categories', label: 'Categories', icon: TagIcon },
-  { href: '/admin/messages',   label: 'Inbox',      icon: MailIcon,  badge: 'messages' },
 ];
 
 export default function AdminNav() {
   const pathname = usePathname() || '/admin';
   const router = useRouter();
-  const [counts, setCounts] = useState({ orders: 0, messages: 0 });
+  const [counts, setCounts] = useState({ orders: 0 });
 
   /**
    * Re-read the counts whenever the screen changes. The layout keeps this
@@ -52,10 +51,7 @@ export default function AdminNav() {
     getDashboard()
       .then(({ data }) => {
         if (cancelled) return;
-        setCounts({
-          orders: data?.orders?.awaiting_confirmation ?? 0,
-          messages: data?.unread_messages ?? 0,
-        });
+        setCounts({ orders: data?.orders?.awaiting_confirmation ?? 0 });
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -235,15 +231,6 @@ function TagIcon({ active }) {
     <Svg>
       <path d="M11.5 3.5H20v8.5l-8.5 8.5L3 12l8.5-8.5Z" {...stroke} {...fillWhenActive(active)} />
       <circle cx="16" cy="8" r="1.5" {...stroke} />
-    </Svg>
-  );
-}
-
-function MailIcon({ active }) {
-  return (
-    <Svg>
-      <rect x="3" y="5.5" width="18" height="13" rx="2" {...stroke} {...fillWhenActive(active)} />
-      <path d="m3.5 7 8.5 6 8.5-6" {...stroke} />
     </Svg>
   );
 }

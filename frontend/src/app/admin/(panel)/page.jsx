@@ -54,13 +54,12 @@ export default function AdminDashboardPage() {
 
   const queue = data?.orders_needing_confirmation || [];
   const soldOut = data?.sold_out_products || [];
-  const unread = data?.unread_messages || 0;
   const failed = data?.orders?.failed_deliveries || 0;
 
   // "Nothing to do" has to be earned, so it is computed from every source of
   // work rather than from the queue alone.
   const allClear =
-    !loading && !error && queue.length === 0 && unread === 0 && soldOut.length === 0;
+    !loading && !error && queue.length === 0 && soldOut.length === 0 && failed === 0;
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -86,8 +85,8 @@ export default function AdminDashboardPage() {
             <div className="mt-6 rounded-xl border border-cash/20 bg-cash-dim px-5 py-8 text-center">
               <p className="text-sm font-semibold text-cash">Nothing needs you right now</p>
               <p className="mx-auto mt-1.5 max-w-sm text-sm leading-relaxed text-ink/70">
-                Every order has been confirmed, the inbox is clear, and nothing on
-                the storefront is sold out.
+                Every order has been confirmed, no delivery has failed, and nothing
+                on the storefront is sold out.
               </p>
             </div>
           )}
@@ -141,17 +140,8 @@ export default function AdminDashboardPage() {
           )}
 
           {/* ============ 2. OTHER THINGS WAITING ============ */}
-          {(unread > 0 || failed > 0 || soldOut.length > 0) && (
+          {(failed > 0 || soldOut.length > 0) && (
             <section className="mt-8 grid gap-3 sm:grid-cols-2">
-              {unread > 0 && (
-                <AlertCard
-                  href="/admin/messages"
-                  tone="accent"
-                  count={unread}
-                  title={`${unread} unread ${unread === 1 ? 'message' : 'messages'}`}
-                  body="Someone asked a question through the contact form."
-                />
-              )}
               {soldOut.length > 0 && (
                 <AlertCard
                   href="/admin/products"

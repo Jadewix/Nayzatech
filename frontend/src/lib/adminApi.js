@@ -166,14 +166,24 @@ export function deleteCategory(id) {
 
 /* --- Orders ------------------------------------------------------------- */
 
-/** The daily queue: orders placed but not yet confirmed by phone. */
-export function listPendingConfirmation() {
-  return request('/admin/orders/pending-confirmation');
-}
-
-export function listOrders({ status, page = 1, limit = 20 } = {}) {
+/**
+ * List orders, optionally narrowed by status, free text or a date range.
+ *
+ * `fromDate` / `toDate` are plain calendar days ("2026-09-12") as an <input
+ * type="date"> produces them. The API validates them as full ISO timestamps,
+ * so they are widened here to cover the whole of each day in the shop's own
+ * timezone: a range of 12th→12th must include an order placed at 18:40 on the
+ * 12th, which a bare date would exclude.
+ */
+export function listOrders({
+  status, fromDate, toDate, search, sort, page = 1, limit = 20,
+} = {}) {
   const query = new URLSearchParams({ page: String(page), limit: String(limit) });
   if (status) query.set('status', status);
+  if (search) query.set('search', search);
+  if (sort) query.set('sort', sort);
+  if (fromDate) query.set('from_date', new Date(`${fromDate}T00:00:00`).toISOString());
+  if (toDate) query.set('to_date', new Date(`${toDate}T23:59:59.999`).toISOString());
   return request(`/admin/orders?${query}`);
 }
 
@@ -212,28 +222,6 @@ export function recordDeliveryAttempt(id, note) {
 /** Correct a phone number, address or internal note. Never status or money. */
 export function updateOrder(id, fields) {
   return request(`/admin/orders/${id}`, { method: 'PATCH', body: fields });
-}
-
-/* --- Contact inbox ------------------------------------------------------ */
-
-export function listMessages({ unreadOnly = false, page = 1, limit = 50 } = {}) {
-  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
-  if (unreadOnly) query.set('is_read', 'false');
-  return request(`/admin/contact?${query}`);
-}
-
-/** Fetching one message marks it read on the backend. */
-export function getMessage(id) {
-  return request(`/admin/contact/${id}`);
-}
-
-/** Pass false to mark something unread again. */
-export function setMessageRead(id, isRead = true) {
-  return request(`/admin/contact/${id}/read`, { method: 'PATCH', body: { is_read: isRead } });
-}
-
-export function deleteMessage(id) {
-  return request(`/admin/contact/${id}`, { method: 'DELETE' });
 }
 
 /* --- Dashboard ---------------------------------------------------------- */

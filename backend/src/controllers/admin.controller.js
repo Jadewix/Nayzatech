@@ -11,19 +11,30 @@
 import { supabase } from '../config/supabase.js';
 import { sendSuccess } from '../utils/response.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
 
 /**
  * GET /api/admin/dashboard
  * One call for the admin home screen, so it does not fire six requests on load.
+ *
+ * WHY THE COUNTERS ARE AN RPC AND THE LISTS ARE NOT
+ * -------------------------------------------------
+ * The counters used to be computed here, by selecting every order and every
+ * product and looping over them in JavaScript. That cost grew with the size of
+ * the shop, and — worse — PostgREST caps the rows it will return, so past that
+ * cap the totals would have silently stopped counting the newest orders while
+ * still looking like healthy numbers.
+ *
+ * get_dashboard_stats() (db/08_dashboard_stats.sql) does that arithmetic in
+ * Postgres and returns nine numbers, so the cost no longer depends on volume.
+ *
+ * The three list queries below stay as they are: each already carries LIMIT 10,
+ * so each returns ten rows whether the shop has sold a hundred orders or a
+ * hundred thousand.
  */
 export const getDashboard = asyncHandler(async (req, res) => {
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
-
-  const [products, orders, contacts, soldOut, recentOrders, needsCall] = await Promise.all([
-    supabase.from('products').select('id, is_active, in_stock'),
-    supabase.from('orders').select('status, total_amount, created_at'),
-    supabase.from('contact_submissions').select('id', { count: 'exact', head: true }).eq('is_read', false),
+  const [stats, soldOut, recentOrders, needsCall] = await Promise.all([
+    supabase.rpc('get_dashboard_stats'),
     // Published but unbuyable: still on the storefront, still indexed, but
     // nobody can order it. Worth surfacing, because it is easy to forget.
     supabase.from('products_with_category')
@@ -39,49 +50,22 @@ export const getDashboard = asyncHandler(async (req, res) => {
       .order('created_at', { ascending: true }).limit(10),
   ]);
 
-  if (products.error) throw products.error;
-  if (orders.error) throw orders.error;
-
-  const ordersByStatus = {};
-  let lifetimeRevenue = 0;
-  let revenue30d = 0;
-  const cutoff = since.toISOString();
-
-  // Revenue = DELIVERED orders only. With cash on delivery the money does not
-  // exist until the courier hands it over, so anything earlier in the pipeline
-  // is a hope, not a sale.
-  let failedDeliveries = 0;
-  for (const order of orders.data) {
-    ordersByStatus[order.status] = (ordersByStatus[order.status] || 0) + 1;
-    if (order.status === 'failed_delivery') failedDeliveries += 1;
-    if (order.status === 'delivered') {
-      const amount = Number(order.total_amount);
-      lifetimeRevenue += amount;
-      if (order.created_at >= cutoff) revenue30d += amount;
+  if (stats.error) {
+    // The function ships as db/08_dashboard_stats.sql and there is no migration
+    // tool, so the one way this fails on a working database is that the file was
+    // never pasted into the SQL editor. Say so, rather than surfacing
+    // PostgREST's "Could not find the function in the schema cache".
+    if (stats.error.code === 'PGRST202' || stats.error.code === '42883') {
+      throw ApiError.internal(
+        'The dashboard statistics function is missing. Run backend/db/08_dashboard_stats.sql in the Supabase SQL editor.',
+        'DASHBOARD_FUNCTION_MISSING'
+      );
     }
+    throw stats.error;
   }
 
   return sendSuccess(res, {
-    products: {
-      total: products.data.length,
-      active: products.data.filter((p) => p.is_active).length,
-      sold_out: products.data.filter((p) => p.is_active && !p.in_stock).length,
-    },
-    orders: {
-      total: orders.data.length,
-      by_status: ordersByStatus,
-      // The daily job: new orders needing a confirmation call before dispatch.
-      awaiting_confirmation: ordersByStatus.pending || 0,
-      out_for_delivery: ordersByStatus.shipped || 0,
-      failed_deliveries: failedDeliveries,
-    },
-    revenue: {
-      // Cash actually collected, not cash hoped for.
-      lifetime: Number(lifetimeRevenue.toFixed(2)),
-      last_30_days: Number(revenue30d.toFixed(2)),
-      basis: 'delivered_orders_only',
-    },
-    unread_messages: contacts.count || 0,
+    ...stats.data,
     sold_out_products: soldOut.data || [],
     recent_orders: recentOrders.data || [],
     // Phone these people before anything gets packed.

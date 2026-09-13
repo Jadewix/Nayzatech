@@ -2,43 +2,66 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { listPendingConfirmation, listOrders } from '@/lib/adminApi';
+import { listOrders } from '@/lib/adminApi';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import OrderCard from '@/components/admin/OrderCard';
 import { ALL_STATUSES, STATUS_LABELS } from '@/components/admin/OrderStatus';
 
 /**
- * The orders dashboard.
+ * The orders screen: every order, filtered.
  *
- * It opens on the confirmation queue rather than on all orders, because that is
- * the one screen with a deadline attached. Cash on delivery has no payment to
- * prove an order is real, so every new order waits for a human to phone the
- * customer before anything is packed. Orders that sit in that queue turn into
- * failed deliveries, so the queue is the default view and the wait time is
- * shown on every card.
+ * It used to open on a separate "needs a call" queue tab. That queue now lives
+ * on the Today screen, where the rest of the day's work is — so this screen is
+ * one list again, and the job it does is looking things up.
  *
- * "All orders" is the second tab, for looking something up.
+ * Confirming an order has not moved: each card still offers exactly the
+ * transitions the database will accept, and the database still owns the rules.
+ *
+ * Filters are held in React state rather than the URL. That is the opposite of
+ * the storefront's catalogue, and deliberately so: nobody shares or bookmarks
+ * an admin filter, and the panel is behind a login, so there is nothing to gain
+ * from making these views linkable.
  */
-export default function OrdersDashboardPage() {
+
+/** Today, as an <input type="date"> value, in the shop's own timezone. */
+function localDay(date = new Date()) {
+  const shifted = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return shifted.toISOString().slice(0, 10);
+}
+
+/** A date that many days before today. */
+function daysAgo(days) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return localDay(date);
+}
+
+const PAGE_SIZE = 20;
+
+export default function OrdersPage() {
   const router = useRouter();
-  const [tab, setTab] = useState('queue');            // 'queue' | 'all'
-  const [status, setStatus] = useState('');           // filter, 'all orders' tab only
-  const [queue, setQueue] = useState([]);
+  const [status, setStatus] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [page, setPage] = useState(1);
+
   const [orders, setOrders] = useState([]);
+  const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      // Both are fetched together so the queue badge stays right while you are
-      // looking at the other tab.
-      const [pending, all] = await Promise.all([
-        listPendingConfirmation(),
-        listOrders({ status: status || undefined, limit: 50 }),
-      ]);
-      setQueue(pending.data?.orders || []);
-      setOrders(Array.isArray(all.data) ? all.data : []);
+      const { data, meta } = await listOrders({
+        status: status || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        page,
+        limit: PAGE_SIZE,
+      });
+      setOrders(Array.isArray(data) ? data : []);
+      setPagination(meta?.pagination || null);
     } catch (err) {
       if (err.code === 'NOT_AUTHENTICATED' || err.status === 401) {
         router.replace('/admin/login');
@@ -48,109 +71,181 @@ export default function OrdersDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, router]);
+  }, [status, fromDate, toDate, page, router]);
 
   useEffect(() => {
     setLoading(true);
     load();
   }, [load]);
 
-  const shown = tab === 'queue' ? queue : orders;
+  /** Any filter change invalidates the page number — page 4 of a new filter is
+      usually empty, and landing on an empty page reads as "no orders". */
+  function applyRange(from, to) {
+    setFromDate(from);
+    setToDate(to);
+    setPage(1);
+  }
+
+  const presets = [
+    { label: 'Today', from: localDay(), to: localDay() },
+    { label: '7 days', from: daysAgo(6), to: localDay() },
+    { label: '30 days', from: daysAgo(29), to: localDay() },
+  ];
+
+  const rangeActive = Boolean(fromDate || toDate);
+  const filtered = rangeActive || Boolean(status);
+
+  function isPreset(preset) {
+    return fromDate === preset.from && toDate === preset.to;
+  }
 
   return (
     <div>
       <AdminPageHeader title="Orders" />
 
-      {/* Tabs */}
-      <div className="mt-6 flex gap-2">
-        <Tab active={tab === 'queue'} onClick={() => setTab('queue')} count={queue.length}>
-          Needs a call
-        </Tab>
-        <Tab active={tab === 'all'} onClick={() => setTab('all')}>
-          All orders
-        </Tab>
+      {/* ---------- Filters ---------- */}
+      <div className="mt-6 rounded-xl border border-line bg-paper p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <Field label="Status" className="min-w-[10rem] flex-1">
+            <select
+              value={status}
+              onChange={(event) => { setStatus(event.target.value); setPage(1); }}
+              className="min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+            >
+              <option value="">Every status</option>
+              {ALL_STATUSES.map((value) => (
+                <option key={value} value={value}>{STATUS_LABELS[value]}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="From" className="min-w-[8.5rem] flex-1">
+            <input
+              type="date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(event) => applyRange(event.target.value, toDate)}
+              className="min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+            />
+          </Field>
+
+          <Field label="To" className="min-w-[8.5rem] flex-1">
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(event) => applyRange(fromDate, event.target.value)}
+              className="min-h-11 w-full rounded-lg border border-line bg-paper px-3 text-sm outline-none focus:border-accent"
+            />
+          </Field>
+        </div>
+
+        {/* The ranges actually asked for, so the common case is one tap rather
+            than two date pickers. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {presets.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              onClick={() => applyRange(preset.from, preset.to)}
+              aria-pressed={isPreset(preset)}
+              className={`min-h-9 rounded-full px-3.5 text-[0.8rem] font-medium transition-colors ${
+                isPreset(preset)
+                  ? 'bg-ink text-paper'
+                  : 'border border-line text-muted hover:border-accent hover:text-ink'
+              }`}
+            >
+              {preset.label}
+            </button>
+          ))}
+          {filtered && (
+            <button
+              type="button"
+              onClick={() => { setStatus(''); applyRange('', ''); }}
+              className="min-h-9 px-2 text-[0.8rem] font-medium text-accent hover:underline"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
       </div>
 
-      {tab === 'queue' ? (
-        <p className="mt-3 text-sm text-muted">
-          Phone each customer to check the order is real, then confirm it. Nothing should be
-          packed before this call.
-        </p>
-      ) : (
-        <div className="mt-3">
-          <label htmlFor="status" className="sr-only">
-            Filter by status
-          </label>
-          <select
-            id="status"
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-            className="w-full rounded-md border border-line bg-paper px-3 py-2.5 text-sm outline-none focus:border-accent"
-          >
-            <option value="">Every status</option>
-            {ALL_STATUSES.map((value) => (
-              <option key={value} value={value}>
-                {STATUS_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
       {error && (
-        <p className="mt-4 rounded-md border border-alert/20 bg-alert-dim px-3 py-2 text-sm text-alert">
+        <p className="mt-4 rounded-lg border border-alert/20 bg-alert-dim px-4 py-3 text-sm text-alert">
           {error}
         </p>
       )}
 
-      <div className="mt-4 space-y-3 pb-16">
+      {/* ---------- Results ---------- */}
+      {pagination && !loading && (
+        <p className="tabular mt-4 text-sm text-muted">
+          {pagination.total} {pagination.total === 1 ? 'order' : 'orders'}
+          {filtered ? ' match these filters' : ''}
+        </p>
+      )}
+
+      <div className="mt-3 space-y-3">
         {loading && <p className="py-10 text-center text-sm text-muted">Loading…</p>}
 
-        {!loading && shown.length === 0 && (
+        {!loading && orders.length === 0 && (
           <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-muted">
-            {tab === 'queue'
-              ? 'Nothing waiting on a call. Every order has been confirmed.'
-              : status
-                ? `No orders with the status “${STATUS_LABELS[status]}”.`
-                : 'No orders yet. They appear here the moment someone checks out.'}
+            {filtered
+              ? 'No orders match these filters.'
+              : 'No orders yet. They appear here the moment someone checks out.'}
           </p>
         )}
 
-        {!loading &&
-          shown.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onChanged={load}
-              /* In the queue the next action is always "call and confirm", so
-                 open the first card — one less tap on the job you do most. */
-              defaultOpen={tab === 'queue' && order.id === shown[0]?.id}
-            />
-          ))}
+        {!loading && orders.map((order) => (
+          <OrderCard key={order.id} order={order} onChanged={load} />
+        ))}
       </div>
+
+      {pagination && pagination.total_pages > 1 && (
+        <nav aria-label="Pagination" className="mt-8 flex items-center justify-center gap-2">
+          <PageButton
+            enabled={pagination.has_previous}
+            onClick={() => setPage((n) => Math.max(1, n - 1))}
+            label="Previous page"
+          >
+            ←
+          </PageButton>
+          <span className="tabular px-3 text-sm text-muted">
+            Page {pagination.page} of {pagination.total_pages}
+          </span>
+          <PageButton
+            enabled={pagination.has_next}
+            onClick={() => setPage((n) => n + 1)}
+            label="Next page"
+          >
+            →
+          </PageButton>
+        </nav>
+      )}
     </div>
   );
 }
 
-function Tab({ active, onClick, count, children }) {
+function Field({ label, className = '', children }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-1 block font-mono text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted">
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function PageButton({ enabled, onClick, label, children }) {
   return (
     <button
       type="button"
+      disabled={!enabled}
       onClick={onClick}
-      className={`flex items-center gap-2 rounded-md px-4 py-2.5 text-xs font-semibold tracking-[0.1em] uppercase transition-colors ${
-        active ? 'bg-ink text-paper' : 'border border-line bg-paper text-muted hover:text-ink'
-      }`}
+      aria-label={label}
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-paper text-ink transition-colors hover:border-accent hover:text-accent disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink"
     >
       {children}
-      {count != null && count > 0 && (
-        <span
-          className={`tabular rounded-full px-1.5 text-[0.65rem] ${
-            active ? 'bg-paper/20 text-paper' : 'bg-accent text-paper'
-          }`}
-        >
-          {count}
-        </span>
-      )}
     </button>
   );
 }
